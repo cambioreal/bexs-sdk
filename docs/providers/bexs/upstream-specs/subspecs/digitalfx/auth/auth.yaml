@@ -1,0 +1,73 @@
+auth:
+  post:
+    tags:
+      - Authentication
+    summary: Create AccessToken
+    operationId: create-access-token
+    requestBody:
+      content:
+        application/x-www-form-urlencoded:
+          schema:
+            required:
+              - client_id
+              - client_secret
+              - grant_type
+            properties:
+              client_id:
+                type: string
+                description: The client_id is a public identifier for apps
+              client_secret:
+                type: string
+                description:
+                  The client_secret is a secret known only to the application
+                  and the authorization server
+              grant_type:
+                type: string
+                description:
+                  Application grant types (or flows) are methods through
+                  which applications can gain Access Tokens and by which you grant
+                  limited access to your resources to another entity without exposing
+                  credentials
+      required: true
+    responses:
+      200:
+        description: OK
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OauthResponse"
+      400:
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OauthBadRequest"
+components:
+  schemas: 
+    OauthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJHSUjJfS3RaakduUU1PM3QyY3psbkJISUJFemVKcHAySFg2OXpHcnVlOUxvIn0.eyJleHAiOjE2MjI1Mjg4MTcsImlhdCI6MTYyMjQ5MjgxNywianRpIjoiOWNjZWIwZTAtMmZiZi00ODkzLTk1NGUtMDk0OWM3OSDM1ZGVmIiwiaSXNzIjoiaHR0cDovL2lhbS5jbG91ZC5iZXhzL2F1dGgvcmVhbG1zL2RldmVsb3AiLCJhdWQiOiJodHRwczovL2FwaS1kZXYuZGlnaXRhbGZ4LmJleHMuY29tLmJyIiwic3ViIjoiYTBlZjBkNTQtZjQxMC00ZSTgyLTlkMzYtNDBjZTA5MzRSjZThiIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiZjI3NmE1MSzkzZjhhOGZiMjA2MmY1ZjM1MTgwNGU3OGEiLCJzZXNzaW9uX3N0YXRlIjoiOWU5YjI2NTUtOTk3YS00NDM0LTg5OTQtY2MzYWU0N2RkYTRlIiwiYWNyIjoiMSIsInNjb3XlIjoiY3VzdG9tZXItYXBpIiwicGFydG5lci1pZCI6ImNkN2E1Y2RjLTVhOGUtNDJhZC05MWM1LTQ1MDU1ODUyMTUzOCIsImNsaWVudElkIjoiZjI3NmE1MzkzZjhhOGZiMjA2MmY1ZjM1MTgwNGU3OGEiLCJjbGllbnRIb3N0IjoiMTAuNjEuMi4xIiwiY2xpZW50QWRkcmVzcyI6IjEwLjYxLjIuMSJ9.s2GHPaniXYS3cwU280wGmDGKNlh0XwC66oeM9doCT0BeFN9veXJdSk3zhW2Ff3rJ5h1PBOKPVbiKOqMZ9AW5N3Vf1ykt7qYhefygIdGg7ZfFZ-8iN14hOgZT0zRhM_5DeYGGtKWfbAc_BIgkzHnwcLDQtYpkvlLPS8I8YiHwUaCM1Evw5hf0p7mQM3BZJqgFocC_Tx-Mz329-BYnzY2Jf3-TuuRRiiuYXo9gxRSvAAou6Ze7B3gqjtnhDEAWBDljLgbGEcrar6YY-L1VqZRjUEWuhUfCGeTO70uwliYap78Th4NIBZhaw3ccAkhG6Y0ReS7m_aC4plVoXdWxW9j7SsQ
+        expires_in:
+          type: integer
+          example: 36000
+        token_type:
+          type: string
+          example: bearer
+        not-before-policy:
+          type: integer
+          example: 0
+        scope:
+          type: string
+          example: customer-api
+    OauthBadRequest:
+      type: object
+      properties:
+        error:
+          type: string
+          example: invalid_request
+        error_description:
+          type: string
+          example: "Missing form parameter: grant_type"

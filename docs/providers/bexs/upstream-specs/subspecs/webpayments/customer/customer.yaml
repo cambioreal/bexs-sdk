@@ -1,0 +1,222 @@
+create_customer:
+  post:
+    tags:
+      - Customer
+    summary: Register a Customer
+    description: |
+      Register an individual customer and receive it status before the FX operation.
+    operationId: create-customer
+    requestBody:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Customer'
+      required: true
+    responses:
+      201:
+        description: Created
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerResponse'
+      400:
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: '../.././digitalfx/error/ErrorResponse.yaml#/ErrorResponse'
+      500:
+        description: Internal Server Error
+        content:
+          application/json:
+            schema:
+              $ref: '../.././digitalfx/error/ErrorResponse.yaml#/ErrorResponse'
+    x-codegen-request-body-name: customer
+get_status_customer:
+  get:
+    tags:
+      - Customer
+    summary: Get status of a Customer
+    description: Check the updated status of an individual customer previously registered.
+    operationId: get-status-customer
+    parameters:
+      - name: customer_id
+        in: path
+        description: Customer ID
+        required: true
+        schema:
+          type: string
+    responses:
+      200:
+        description: OK
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerStatusResponse'
+      404:
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: '../.././digitalfx/error/ErrorResponse.yaml#/ErrorResponse'
+      500:
+        description: Internal Server Error
+        content:
+          application/json:
+            schema:
+              $ref: '../.././digitalfx/error/ErrorResponse.yaml#/ErrorResponse'
+components:
+  schemas:
+    Customer:
+      discriminator:
+        propertyName: type
+        mapping:
+          INDIVIDUAL: '#/components/schemas/CustomerIndividual'
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - INDIVIDUAL
+          description: Customer type
+      required:
+        - type
+    CustomerIndividual:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/Customer'
+      properties:
+        individual:
+          allOf:
+            - $ref: '#/components/schemas/Individual'
+          description: The **individual** customer object
+      required:
+        - individual
+    Individual:
+      type: object
+      properties:
+        document_number:
+          type: string
+          description: Individual's Document number (CPF)
+          example: '47342703095'
+          pattern: ' CPF'
+        first_name:
+          type: string
+          description: Individual's first name
+          example: Mary Elizabeth
+        last_name:
+          type: string
+          description: Individual's last name
+          example: Smith
+      required:
+        - document_number
+        - first_name
+        - last_name
+    CustomerIndividualResponse:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/CustomerResponse'
+      properties:
+        individual:
+          allOf:
+            - $ref: '#/components/schemas/Individual'
+          description: The **individual** customer object
+    CustomerResponse:
+      discriminator:
+        propertyName: type
+        mapping:
+          INDIVIDUAL: '#/components/schemas/CustomerIndividualResponse'
+      type: object
+      properties:
+        id:
+          type: string
+          description: Customer ID
+          example: '1f6d52eb445095b962af2734080c00c4'
+        created_at:
+          type: string
+          format: date-time
+          example: '2021-06-04T19:42:26.539541329Z'
+          pattern: RFC-3339 nano
+          description: 'Creation time. Adherent to **RFC-3339 nano**'
+        updated_at:
+          type: string
+          format: date-time
+          example: '2021-06-04T19:42:26.539541329Z'
+          pattern: RFC-3339 nano
+          description: 'Last updated time. Adherent to **RFC-3339 nano**'
+        type:
+          type: string
+          enum:
+            - INDIVIDUAL
+          description: Customer type
+        status:
+          type: string
+          example: 'APPROVED'
+          enum:
+            - CREATED
+            - APPROVED
+            - INCOMPLETE
+            - ANALYSING
+            - REJECTED
+          description: 'Current on boarding status of a customer'
+    CustomerStatusResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: 'INCOMPLETE'
+          enum:
+            - CREATED
+            - APPROVED
+            - INCOMPLETE
+            - ANALYSING
+            - REJECTED
+          description: 'Current on boarding status of a customer'
+        details:
+          type: array
+          items:
+            type: object
+          properties:
+          code:
+            type: string
+          example:
+            - code: FILE_NOT_FOUND_CORPORATE_DOCUMENT
+            - code: SHAREHOLDER_NOT_APPROVED
+    IndividualSearch:
+      type: object
+      properties:
+        individual:
+          allOf:
+            - $ref: '#/components/schemas/Individual'
+        id:
+          type: string
+          description: Customer ID
+          example: '1f6d52eb445095b962af2734080c00c4'
+        created_at:
+          type: string
+          format: date-time
+          example: '2021-06-04T19:42:26.539541329Z'
+          pattern: RFC-3339 nano
+          description: 'Creation time. Adherent to **RFC-3339 nano**'
+        updated_at:
+          type: string
+          format: date-time
+          example: '2021-06-04T19:42:26.539541329Z'
+          pattern: RFC-3339 nano
+          description: 'Last updated time. Adherent to **RFC-3339 nano**'
+        type:
+          type: string
+          example: 'INDIVIDUAL'
+          enum:
+            - INDIVIDUAL
+          description: Customer type
+        status:
+          type: string
+          example: 'APPROVED'
+          enum:
+            - CREATED
+            - APPROVED
+            - INCOMPLETE
+            - ANALYSING
+            - REJECTED
+          description: 'Current on boarding status of a customer'

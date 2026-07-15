@@ -1,0 +1,1101 @@
+capture:
+  post:
+    tags:
+      - Payments
+    summary: Register payment
+    description: |
+      Receives and register a financial operation to be subsequently settled. The decision of when to send payments is entirely up to the partner. However, it is recommended to send the payment as soon as the sell checkout is done so Ebury Bank can guarantee the hedge of the operation. It is mandatory to use the Ebury Bank quotes service in order to obtain the exchange rate that will be used in payment registration.
+
+      Considerations:
+
+      - The exchange rate must be always updated, with the tolerance max of 5 minutes. It is an optional field and when not filled, the system will automatically obtain the current quotation based on the currency code informed. 
+
+      - Only the **national_gross_amount** field is mandatory. Fill the other amount fields in case of:
+
+        - **national_net_amount**: if you are charging your merchant for this operation. The net amount is the value that will be payed to the merchant. When not informed, the system will assume that gross and net are the same.
+
+        - **foreign_gross_amount**: if you are fixing your price in foreign currency. In this case, you must inform also the corresponding exchange rate used, as national_gross_amount is mandatory. When not informed, the system will obtain the current quotation based on the currendy code informed and automatically find the foreign amount.
+
+        - **foreign_net_amount**: same idea of national_net_amount and only used if you are charging your merchant and fixing your price in foreign currency.
+
+    requestBody:
+      content:
+        'application/json':
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/TypePayment'
+              - $ref: '#/components/schemas/Expense'
+    responses:
+      '201':
+        description: |
+          Transaction received with success
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/CapturePaymentResponse'
+      '400':
+        $ref: './responses.yaml#/BadRequestFailure'
+      '401':
+        $ref: './responses.yaml#/Unauthorized'
+      '409':
+        $ref: './responses.yaml#/Conflict'
+      '412':
+        $ref: './responses.yaml#/PreconditionFailure'
+      '500':
+        $ref: './responses.yaml#/ServerFailure'
+      '503':
+        $ref: './responses.yaml#/ServiceUnavailable'
+get:
+  get:
+    tags:
+      - Payments
+    parameters:
+      - name: payment_id
+        schema:
+          type: string
+        in: path
+        description: |
+          Payment identification
+        required: false
+      - name: legacy_id
+        in: query
+        schema:
+          type: string
+        description: |
+          Query payment by legacy identification
+      - description: The initial of pagination
+        in: query
+        name: offset
+        schema:
+          type: string
+      - description: The final of pagination
+        in: query
+        name: limit
+        schema:
+          type: string
+    summary: |
+      Query payment
+    description: |
+      Query a payment information
+    responses:
+      '200':
+        description: |
+          Payment information
+        content:
+          'application/json':
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/PaymentResponse'
+      '500':
+        $ref: './responses.yaml#/ServerFailure'
+      '404':
+        $ref: './responses.yaml#/NotFound'
+      '401':
+        $ref: './responses.yaml#/Unauthorized'
+      '503':
+        $ref: './responses.yaml#/ServiceUnavailable'
+cancel:
+  post:
+    tags:
+      - Cancellations
+    summary: Payment Cancel
+    description: |
+      Receives a partial or full cancellation request. 
+
+      Considerations:
+
+        - In case of the payment operation had already been settled, the cancellation request *must be analysed by Ebury Bank team in order to proceed with the refund*.
+
+        - The cancellation rate is always updated with the current exchange rate. It is automatically filled by the system.
+
+        - Whenever the cancellation amount is not informed, zero (0) or equals to the payment amount, it will be considered a full cancellation.
+
+        - It is possible to inform only national_amount or foreign_amount. The system will calculate automatically and compare with the payment value. 
+
+        - The cancellation will be rejected if the amount requested is superior to the payment amount registered.
+
+    parameters:
+      - name: payment_id
+        in: path
+        description: |
+          Payment identification
+        required: true
+        schema:
+          type: string
+    requestBody:
+      content:
+        'application/json':
+          schema:
+            $ref: '#/components/schemas/Cancel'
+    responses:
+      '201':
+        description: |
+          Transaction received with success
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/CancelResponse'
+      '400':
+        $ref: './responses.yaml#/BadRequestFailure'
+      '401':
+        $ref: './responses.yaml#/Unauthorized'
+      '409':
+        $ref: './responses.yaml#/Conflict'
+      '412':
+        $ref: './responses.yaml#/PreconditionFailure'
+      '500':
+        $ref: './responses.yaml#/ServerFailure'
+      '503':
+        $ref: './responses.yaml#/ServiceUnavailable'
+getCancel:
+  get:
+    tags:
+      - Cancellations
+    consumes:
+      - application/json
+    description: Query a Cancellation by payment_id|cancellation_id
+    parameters:
+      - description: The payment ID
+        in: path
+        name: payment_id
+        required: true
+        type: string
+      - description: The cancellation ID
+        in: path
+        name: cancellation_id
+        required: true
+        type: string
+    produces:
+      - application/json
+    responses:
+      '200':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/entity.Cancellation'
+      '400':
+        $ref: './responses.yaml#/BadRequestFailure'
+      '401':
+        $ref: './responses.yaml#/Unauthorized'
+      '409':
+        $ref: './responses.yaml#/Conflict'
+      '412':
+        $ref: './responses.yaml#/PreconditionFailure'
+      '500':
+        $ref: './responses.yaml#/ServerFailure'
+      '503':
+        $ref: './responses.yaml#/ServiceUnavailable'
+getLimit:
+  get:
+    tags:
+      - Payments
+    consumes:
+      - application/json
+    description: |
+      Fetch a Limit by Document Number
+
+      The Brazilian Central Bank regulation stablishes that each payment can not be over than 10,000 dollars or equivalent in another currency. Also the sum of all payments for the same consumer cannot exceed *120,000 dollars in the year*. Use this functionallity to check the limit used.
+    parameters:
+      - description: The Document Number
+        in: path
+        name: document_number
+        required: true
+        type: string
+    produces:
+      - application/json
+    responses:
+      '200':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/entity.Limit'
+      '400':
+        $ref: './responses.yaml#/BadRequestFailure'
+      '401':
+        $ref: './responses.yaml#/Unauthorized'
+      '409':
+        $ref: './responses.yaml#/Conflict'
+      '412':
+        $ref: './responses.yaml#/PreconditionFailure'
+      '500':
+        $ref: './responses.yaml#/ServerFailure'
+      '503':
+        $ref: './responses.yaml#/ServiceUnavailable'
+components:
+  schemas:
+    Event:
+      type: object
+      readOnly: true
+      properties:
+        header:
+          type: object
+          properties:
+            type:
+              description: |
+                Event type
+              type: string
+              enum:
+                - PAYMENT_CAPTURED
+                - PAYMENT_INVALIDATED
+                - PAYMENT_ACCEPTED
+                - PAYMENT_REJECTED
+                - PAYMENT_DUPLICATED
+                - OPERATION_MOVED
+                - SELECTED_FOR_SETTLEMENT
+                - SELECTED_FOR_REGISTRY
+                - CANCELLATION_INVALIDATED
+                - CANCELLATION_ACCEPTED
+            time:
+              description: |
+                System generated event's timestamp
+              type: date-time
+            id:
+              description: |
+                Event identification
+              type: string
+        payment:
+          $ref: '#/components/schemas/Payment'
+        cancellation:
+          $ref: '#/components/schemas/Cancel'
+    Cancel:
+      type: object
+      properties:
+        type:
+          description: |
+            Informs the cancellation type. This info is generated by the system according to the operation's current status
+          type: string
+          readOnly: true
+          enum:
+            - REVERSION
+            - REFUND
+            - UNREGISTER
+        external_id:
+          description: |
+            This identification is informed by Partner to control and avoid cancellation's duplicity
+          type: string
+          maxLength: 128
+          minLength: 1
+        foreign_amount:
+          description: |
+            Cancellation gross amount in foreign currency, use two decimal places.
+          type: number
+          format: float
+          maximum: 999999999999.99
+          minimum: 0.01
+        national_amount:
+          description: |
+            Cancellation gross amount in national currency, use two decimal places.
+          type: number
+          format: float
+          maximum: 999999999999.99
+          minimum: 0.01
+        partial:
+          description: |
+            System informs when the cancellation is partial
+          type: boolean
+          readOnly: true
+    CancelResponse:
+      type: object
+      properties:
+        cancellationId:
+          description: |
+            The cancellation_id is a ID generated based a fingerPrint. If the partner inform by 
+            request the 'external_id', the fingerPrint use this attribute to generate the cancellation_id.
+            If 'external_id' not informed, the API use following attributes from request as fingerPrint to generate the cancellation_id:
+            - partner_id
+            - payment_id
+            - date as current date
+          type: string
+    PaymentResponse:
+      type: object
+      properties:
+        external_id:
+          type: string
+          description: |
+            This identification is informed by Partner to control and avoid payment's duplicity
+          maxLength: 128
+          minLength: 1
+        type:
+          $ref: '../commons/components.yaml#/components/schemas/PaymentType'
+          readOnly: false
+        date:
+          description: |
+            Operation date, between customer and seller
+          type: string
+          format: date-time
+        foreign_gross_amount:
+          description: |
+            Operation's gross amount in foreign currency, use two decimal places.
+            The informed value must oblige the following formula:
+            foreignAmount = nationalAmount / exchangeRate
+          type: number
+          format: float
+          maximum: 999999999999.99
+          minimum: 0.01
+          example: 45.50
+        national_gross_amount:
+          description: |
+            Operation's gross amount in national currency, use two decimal places.
+            The informed value must oblige the following formula:
+            nationalAmount = foreignAmount * exchangeRate
+          type: number
+          format: float
+          maximum: 999999999999.99
+          minimum: 0.01
+          example: 18.20
+        foreign_net_amount:
+          description: |
+            Operation's net amount in foreign currency, use two decimal places.
+            The informed value must oblige the following formula:
+            foreignNetAmount = nationalNetAmount / exchangeRate
+          type: number
+          format: float
+          maximum: 999999999999.99
+          minimum: 0.01
+          example: 41.50
+        national_net_amount:
+          description: |
+            Operation's net amount in national currency, use two decimal places.
+            The informed value must oblige the following formula:
+            nationalNetAmount = foreignNetAmount * exchangeRate
+          type: number
+          format: float
+          maximum: 999999999999.99
+          minimum: 0.01
+          example: 16.60
+        exchange_rate:
+          description: |
+            Operation exchange rate, use four decimal places.
+          type: number
+          format: float
+          example: 2.5000
+        currency_code:
+          $ref: '../commons/components.yaml#/components/schemas/CurrencyCode'
+          readOnly: false
+        payment_method:
+          description: |
+            Customer's chosen payment method for the operation.
+            - CREDIT_CARD, Credit card;
+            - DEBIT_CARD, Debit card;
+            - ELECTRONIC_FUNDS_TRANSFER, Electronic transfer;
+            - BANK_BILLET, Bank Billet - Cannot be used when productCategory = SERVICES;
+            - VOUCHER, Voucher;
+            - WALLET, Credit through online wallet;
+            - PIX, Instant electronic transfer;
+            - CREDIT_ACCOUNT, Can be used only for configured partners - Category must be SERVICES.
+          type: string
+          enum:
+            - CREDIT_CARD
+            - DEBIT_CARD
+            - ELECTRONIC_FUNDS_TRANSFER
+            - BANK_BILLET
+            - VOUCHER
+            - WALLET
+            - PIX
+            - CREDIT_ACCOUNT
+        product_category:
+          $ref: '../commons/components.yaml#/components/schemas/ProductCategory'
+          readOnly: false
+        expense_type:
+          $ref: '../commons/components.yaml#/components/schemas/ExpenseType'
+          readOnly: false
+        merchant_used_psp:
+          description: |
+            Informs when the merchant processed the transaction through a PSP (payment solution provider), Gateway, or other type of intermediary.
+            When true, the intermediary information becomes mandatory.
+          type: boolean
+          default: false
+        merchant_id:
+          type: string
+          description: |
+            Merchant's identification returned by our merchant API.
+        psp_id:
+          type: string
+          description: |
+            Intermediary identification returned by our merchant API, mandatory when merchant_used_psp param is "true".
+        consumer:
+          $ref: '#/components/schemas/Consumer'
+        status:
+          $ref: '../commons/components.yaml#/components/schemas/PaymentStatus'
+          readOnly: true
+    Payment:
+      title: Payment
+      type: object
+      required:
+        - type
+        - date
+        - national_gross_amount
+        - foreign_amount
+        - currency_code
+        - payment_method
+        - consumer
+        - merchant_id
+      properties:
+        legacy_id:
+          $ref: '#/components/schemas/LegacyId'
+        type:
+          $ref: '../commons/components.yaml#/components/schemas/PaymentType'
+          readOnly: false
+        date:
+          description: |
+            Operation date, between customer and seller
+          type: string
+          format: date-time
+        foreign_gross_amount:
+          description: |
+            Operation's gross amount in foreign currency, use two decimal places. Required if foreign_net_amount is informed, or if net_gross_amount is not informed.
+            The informed value must oblige the following formula:
+            foreignAmount = nationalAmount / exchangeRate
+          type: number
+          format: float
+          maximum: 999999999999.99
+          minimum: 0.01
+          example: 45.50
+        national_gross_amount:
+          description: |
+            Operation's gross amount in national currency, use two decimal places. Required if national_net_amount is informed, or if foreign_gross_amount is not informed.
+            The informed value must oblige the following formula:
+            nationalAmount = foreignAmount * exchangeRate
+          type: number
+          format: float
+          maximum: 999999999999.99
+          minimum: 0.01
+          example: 18.20
+        foreign_net_amount:
+          description: |
+            Operation's net amount in foreign currency, use two decimal places.
+            The informed value must oblige the following formula:
+            foreignNetAmount = nationalNetAmount / exchangeRate
+          type: number
+          format: float
+          maximum: 999999999999.99
+          minimum: 0.01
+          example: 41.50
+        national_net_amount:
+          description: |
+            Operation's net amount in national currency, use two decimal places.
+            The informed value must oblige the following formula:
+            nationalNetAmount = foreignNetAmount * exchangeRate
+          type: number
+          format: float
+          maximum: 999999999999.99
+          minimum: 0.01
+          example: 16.60
+        exchange_rate:
+          description: |
+            Operation exchange rate, use four decimal places.
+          type: number
+          format: float
+          example: 2.5000
+        currency_code:
+          $ref: '../commons/components.yaml#/components/schemas/CurrencyCode'
+          readOnly: false
+        payment_method:
+          description: |
+            Customer's chosen payment method for the operation.
+            - CREDIT_CARD, Credit card;
+            - DEBIT_CARD, Debit card;
+            - ELECTRONIC_FUNDS_TRANSFER, Electronic transfer;
+            - BANK_BILLET, Bank Billet - Cannot be used when productCategory = SERVICES;
+            - VOUCHER, Voucher;
+            - WALLET, Credit through online wallet - Cannot be used when productCategory = SERVICES;
+            - PIX, Instant electronic transfer;
+            - CREDIT_ACCOUNT, Can be used only for configured partners - Category must be SERVICES.
+          type: string
+          enum:
+            - CREDIT_CARD
+            - DEBIT_CARD
+            - ELECTRONIC_FUNDS_TRANSFER
+            - BANK_BILLET
+            - VOUCHER
+            - WALLET
+            - PIX
+            - CREDIT_ACCOUNT
+        product_category:
+          $ref: '../commons/components.yaml#/components/schemas/ProductCategory'
+          readOnly: false
+        expense_type:
+          $ref: '../commons/components.yaml#/components/schemas/ExpenseType'
+          readOnly: false
+        merchant_used_psp:
+          description: |
+            Informs when the merchant processed the transaction through a PSP (payment solution provider), Gateway, or other type of intermediary.
+            When true, the intermediary information becomes mandatory.
+          type: boolean
+          default: false
+        merchant_id:
+          type: string
+          description: |
+            Merchant's identification returned by our merchant API. Required if merchant_legal_name is not provided.
+        merchant_legal_name:
+          type: string
+          description: |
+            Merchant's legal name. Required if merchant_id is not provided.
+        psp_id:
+          type: string
+          description: |
+            Intermediary identification returned by our merchant API, mandatory when merchant_used_psp param is "true".
+        consumer:
+          oneOf:
+            - $ref: '#/components/schemas/ConsumerIndividual'
+    CapturePaymentResponse:
+      type: object
+      properties:
+        paymentId:
+          description: |
+            The payment_id is a ID generated based a fingerPrint. If the partner inform by 
+            request the 'external_id', the fingerPrint use this attribute to generate the payment_id.
+            If 'external_id' not informed, the API use following attributes from request as fingerPrint to generate the payment_id:
+            - partner_id
+            - type
+            - method
+            - product_category
+            - currency_code
+            - national_gross
+            - exchange_rate
+            - merchant_id
+            - document_number *if the transaction type is GOODS
+          type: string
+        partnerId:
+          type: string
+    TypePayment:
+      title: Payment
+      type: object
+      required:
+        - type
+        - date
+        - national_gross_amount
+        - foreign_amount
+        - currency_code
+        - payment_method
+        - consumer
+        - merchant_id
+      properties:
+        legacy_id:
+          $ref: '#/components/schemas/LegacyId'
+        external_id:
+          $ref: '#/components/schemas/ExternalId'
+        type:
+          $ref: '../commons/components.yaml#/components/schemas/PaymentType'
+          readOnly: false
+        date:
+          description: |
+            Operation date, between customer and seller
+          type: string
+          format: date-time
+        foreign_gross_amount:
+          description: |
+            Operation's gross amount in foreign currency, use two decimal places. Required if foreign_net_amount is informed, or if net_gross_amount is not informed.
+            The informed value must oblige the following formula:
+            foreignAmount = nationalAmount / exchangeRate
+          type: number
+          format: float
+          maximum: 999999999999.99
+          minimum: 0.01
+          example: 45.50
+        national_gross_amount:
+          description: |
+            Operation's gross amount in national currency, use two decimal places.
+          type: number
+          format: float
+          maximum: 999999999999.99
+          minimum: 0.01
+          example: 18.20
+        foreign_net_amount:
+          description: |
+            Operation's net amount in foreign currency, use two decimal places.
+            The informed value must oblige the following formula:
+            foreignNetAmount = nationalNetAmount / exchangeRate
+          type: number
+          format: float
+          maximum: 999999999999.99
+          minimum: 0.01
+          example: 41.50
+        national_net_amount:
+          description: |
+            Operation's net amount in national currency, use two decimal places.
+            The informed value must oblige the following formula:
+            nationalNetAmount = foreignNetAmount * exchangeRate
+          type: number
+          format: float
+          maximum: 999999999999.99
+          minimum: 0.01
+          example: 16.60
+        exchange_rate:
+          description: |
+            Operation exchange rate, use four decimal places.
+          type: number
+          format: float
+          example: 2.5000
+        currency_code:
+          $ref: '../commons/components.yaml#/components/schemas/CurrencyCode'
+          readOnly: false
+        payment_method:
+          description: |
+            Customer's chosen payment method for the operation.
+            - CREDIT_CARD, Credit card;
+            - DEBIT_CARD, Debit card;
+            - ELECTRONIC_FUNDS_TRANSFER, Electronic transfer;
+            - BANK_BILLET, Bank Billet - Cannot be used when productCategory = SERVICES;
+            - VOUCHER, Voucher;
+            - WALLET, Credit through online wallet - Cannot be used when productCategory = SERVICES;
+            - PIX, Instant electronic transfer;
+            - CREDIT_ACCOUNT, Can be used only for configured partners - Category must be SERVICES.
+          type: string
+          enum:
+            - CREDIT_CARD
+            - DEBIT_CARD
+            - ELECTRONIC_FUNDS_TRANSFER
+            - BANK_BILLET
+            - VOUCHER
+            - WALLET
+            - PIX
+            - CREDIT_ACCOUNT
+        product_category:
+          $ref: '../commons/components.yaml#/components/schemas/ProductCategory'
+          readOnly: false
+        merchant_used_psp:
+          description: |
+            Informs when the merchant processed the transaction through a PSP (payment solution provider), Gateway, or other type of intermediary.
+            When true, the intermediary information becomes mandatory.
+          type: boolean
+          default: false
+        merchant_id:
+          type: string
+          description: |
+            Merchant's identification returned by our merchant API. Required if merchant_legal_name is not provided.
+        merchant_legal_name:
+          type: string
+          description: |
+            Merchant's legal name. Required if merchant_id is not provided.
+        psp_id:
+          type: string
+          description: |
+            Intermediary identification returned by our merchant API, mandatory when merchant_used_psp param is "true".
+        consumer:
+          oneOf:
+            - $ref: '#/components/schemas/ConsumerIndividual'
+    Expense:
+      title: Expense
+      type: object
+      required:
+        - type
+        - date
+        - national_gross_amount
+        - foreign_gross_amount
+        - currency_code
+        - payment_method
+        - expense_type
+        - merchant_id
+      properties:
+        legacy_id:
+          $ref: '#/components/schemas/LegacyId'
+        external_id:
+          $ref: '#/components/schemas/ExternalId'
+        type:
+          $ref: '../commons/componentsExpenses.yaml#/components/schemas/PaymentType'
+          readOnly: false
+        date:
+          description: |
+            Operation date, between customer and seller
+          type: string
+          format: date-time
+        foreign_gross_amount:
+          description: |
+            Operation's gross amount in foreign currency, use two decimal places. Required if foreign_net_amount is informed, or if net_gross_amount is not informed.
+            The informed value must oblige the following formula:
+            foreignAmount = nationalAmount / exchangeRate
+
+            *This field is required if national_gross_amount was not informed in payload.
+          type: number
+          format: float
+          maximum: 999999999999.99
+          minimum: 0.01
+          example: 45.50
+        national_gross_amount:
+          description: |
+            Operation's gross amount in national currency, use two decimal places.
+
+            *This field is required if foreign_gross_amount was not informed in payload.
+          type: number
+          format: float
+          maximum: 999999999999.99
+          minimum: 0.01
+          example: 18.20
+        exchange_rate:
+          description: |
+            Operation exchange rate, use four decimal places.
+          type: number
+          format: float
+          example: 2.5000
+        currency_code:
+          $ref: '../commons/components.yaml#/components/schemas/CurrencyCode'
+          readOnly: false
+        payment_method:
+          description: |
+            Customer's chosen payment method for the operation.
+            - ELECTRONIC_FUNDS_TRANSFER, Electronic transfer;
+          type: string
+          enum:
+            - ELECTRONIC_FUNDS_TRANSFER
+        product_category:
+          $ref: '../commons/componentsExpenses.yaml#/components/schemas/ProductCategory'
+          readOnly: false
+        expense_type:
+          $ref: '../commons/components.yaml#/components/schemas/ExpenseType'
+          readOnly: false
+        merchant_id:
+          type: string
+          description: |
+            Merchant's identification returned by our merchant API. Required if merchant_legal_name is not provided.
+        merchant_legal_name:
+          type: string
+          description: |
+            Merchant's legal name. Required if merchant_id is not provided.
+        merchant_used_psp:
+          description: |
+            Informs when the merchant processed the transaction through a PSP (payment solution provider), Gateway, or other type of intermediary.
+            When true, the intermediary information becomes mandatory.
+          type: boolean
+          default: false
+        psp_id:
+          type: string
+          description: |
+            Intermediary identification returned by our merchant API, mandatory when merchant_used_psp param is "true".
+    Consumer:
+      description: |
+        Financial operation's customer.
+      type: object
+      required:
+        - document_number
+        - address
+        - email
+        - document_validation_date
+        - type
+      properties:
+        type:
+          description: |
+            Type of consumer in Brazil, being “INDIVIDUAL“ for natural person, or “COMPANY“ if your consumer is a legal person.
+          type: string
+          default: INDIVIDUAL
+          enum:
+            - INDIVIDUAL
+        document_number:
+          description: |
+            The consumer registration number. In Brazil, this number is the CPF (11 digits) for individuals, or CNPJ (14 digits) for business company.
+            Inform only numbers, no special characters required.
+          type: string
+          maxLength: 20
+          example: 12345678909
+        date_of_birth:
+          description: |
+            Customer's birth date. Mandatory when type is INDIVIDUAL.
+          type: string
+          format: date
+        date_of_registry:
+          description: |
+            Company's date of registry.
+          type: string
+          format: date
+        first_name:
+          description: |
+            Customer's first name. Mandatory when type is INDIVIDUAL.
+          type: string
+          maxLength: 512
+        last_name:
+          description: |
+            Customer's last name. Mandatory when type is INDIVIDUAL.
+          type: string
+          maxLength: 512
+        address:
+          $ref: '#/components/schemas/Address'
+        email:
+          description: |
+            Customer's e-mail.
+          type: string
+          format: email
+          maxLength: 256
+        phone:
+          $ref: '#/components/schemas/Phone'
+        document_validation_date:
+          description: |
+            Date of the last document validation run before Brazil's IRS.
+          type: string
+          format: date
+    ConsumerIndividual:
+      title: Individual
+      description: |
+        Financial operation's customer.
+      type: object
+      required:
+        - document_number
+        - type
+        - date_of_birth
+        - first_name
+        - last_name
+        - legal_name
+      properties:
+        type:
+          description: |
+            Type of consumer in Brazil, being “INDIVIDUAL“ for natural person, or “COMPANY“ if your consumer is a legal person.
+          type: string
+          default: INDIVIDUAL
+          enum:
+            - INDIVIDUAL
+            - COMPANY
+        document_number:
+          description: |
+            The consumer registration number. In Brazil, this number is the CPF (11 digits) for individuals, or CNPJ (14 digits) for business company.
+          type: string
+          maxLength: 20
+          example: 12345678909
+        date_of_birth:
+          description: |
+            Customer's birth date. Mandatory when type is INDIVIDUAL.
+          type: string
+          format: date
+        first_name:
+          description: |
+            Customer's first name. Mandatory when type is INDIVIDUAL.
+          type: string
+          maxLength: 512
+        last_name:
+          description: |
+            Customer's last name. Mandatory when type is INDIVIDUAL.
+          type: string
+          maxLength: 512
+        legal_name:
+          description: |
+            Customer's legal name. Mandatory when type is COMPANY
+          type: string
+          maxLength: 512
+        full_name:
+          description: |
+            Customer's full name.
+          type: string
+          maxLength: 512
+        address:
+          $ref: '#/components/schemas/Address'
+        email:
+          description: |
+            Customer's e-mail.
+          type: string
+          format: email
+          maxLength: 256
+        phone:
+          $ref: '#/components/schemas/Phone'
+        document_validation_date:
+          description: |
+            Date of the last document validation run before Brazil's IRS.
+          type: string
+          format: date
+    Phone:
+      description: |
+        Customer's phone number.
+      type: object
+      required:
+        - number
+      properties:
+        number:
+          description: |
+            Phone's number, inform numbers only.
+          type: string
+          maxLength: 20
+          minLength: 8
+        area_code:
+          description: |
+            Phone's area code.
+          type: string
+          maxLength: 3
+          minLength: 1
+        country_code:
+          description: |
+            Phone's country code.
+          type: string
+          maxLength: 10
+          minLength: 1
+        provider:
+          description: |
+            Phone's provider.
+          type: string
+          maxLength: 32
+    Address:
+      required:
+        - street
+        - number
+        - neighborhood
+        - city_name
+        - state_code
+        - zip_code
+        - country_code
+      description: |
+        Customer's address.
+      type: object
+      properties:
+        street:
+          description: |
+            Street's name.
+          maxLength: 255
+          type: string
+        number:
+          description: |
+            Address's number.
+          maxLength: 10
+          type: string
+        complement:
+          description: |
+            Address's complement.
+          type: string
+          maxLength: 50
+        neighborhood:
+          description: |
+            Neighborhood's name.
+          maxLength: 255
+          type: string
+        city_name:
+          description: |
+            City's name.
+          minLength: 1
+          maxLength: 255
+          type: string
+        state_code:
+          description: |
+            State's initials (ISO 3166-2 alpha-2).
+          maxLength: 2
+          minLength: 2
+          type: string
+        country_code:
+          description: |
+            Country ISO code (ISO 3166-1 alfa-3).
+          maxLength: 3
+          minLength: 1
+          type: string
+        zip_code:
+          description: |
+            Postal code, without special characters.
+          type: string
+          maxLength: 9
+          minLength: 8
+          pattern: '^\d{8-9}$'
+    Id:
+      description: |
+        Operation's identification. This hash is unique per partner, and follows the UUID v4 specification
+      type: string
+      maxLength: 128
+      minLength: 1
+    LegacyId:
+      description: |
+        Operation's identification. This hash is unique per partner, and follows the UUID v4 specification
+      type: string
+      maxLength: 128
+      minLength: 1
+    ExternalId:
+      description: |
+        This identification is informed by Partner to control and avoid payment's duplicity
+      type: string
+      maxLength: 128
+      minLength: 1
+    CurrencyCode:
+      description: |
+        Foreign currency code involved on the operation as specified in [ISO 4217].
+        It must be a currency in which the partner is authorized to operate with us.
+      type: string
+      default: USD
+      maxLength: 3
+      minLength: 3
+    entity.BucketRef:
+      properties:
+        name:
+          type: string
+        stage:
+          type: string
+        time:
+          type: string
+      type: object
+    entity.Cancellation:
+      properties:
+        bucket:
+          $ref: '#/components/schemas/entity.BucketRef'
+          type: object
+        cancellation_id:
+          type: string
+        external_id:
+          type: string
+        created_at:
+          type: date
+        errors:
+          $ref: '#/components/schemas/entity.ValidationError'
+          type: object
+        foreign_gross_amount:
+          type: number
+        foreign_net_amount:
+          type: number
+        national_gross_amount:
+          type: number
+        national_net_amount:
+          type: number
+        partially:
+          type: boolean
+        partner_id:
+          type: string
+        payment_id:
+          type: string
+        ratio:
+          type: number
+        registry:
+          $ref: '#/components/schemas/entity.CheckoutRef'
+          type: object
+        settlement:
+          $ref: '#/components/schemas/entity.CheckoutRef'
+          type: object
+        status:
+          type: string
+        type:
+          type: string
+        updated_at:
+          type: datetime
+          example: '2019-08-24T14:15:22Z'
+        version:
+          type: integer
+      type: object
+    entity.CheckoutRef:
+      properties:
+        id:
+          type: string
+        time:
+          type: datetime
+          example: '2019-08-24T14:15:22Z'
+      type: object
+    entity.Limit:
+      properties:
+        consumer_id:
+          type: string
+        created_at:
+          type: datetime
+          example: '2019-08-24T14:15:22Z'
+        partner_id:
+          type: string
+        total:
+          type: integer
+        updated_at:
+          type: datetime
+          example: '2019-08-24T14:15:22Z'
+        used:
+          type: integer
+      type: object
+    entity.ValidationError:
+      properties:
+        details:
+          additionalProperties:
+            type: string
+          type: object
+        error_type:
+          type: string
+        message:
+          type: string
+        status:
+          type: string
+      type: object

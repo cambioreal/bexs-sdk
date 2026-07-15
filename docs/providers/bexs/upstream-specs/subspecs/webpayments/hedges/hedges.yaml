@@ -1,0 +1,344 @@
+definitions:
+  domain.HedgePostRequest:
+    properties:
+      national_amount:
+        type: number
+        description: Amount to be reserved in national currency (BRL). Use two decimal places. Mandatory when foreign_amount is not informed.
+      foreign_amount:
+        type: number
+        description: Amount to be reserved in foreign currency. Use two decimal places. Mandatory when national_amount is not informed.
+      currency_code:
+        type: string
+        description: |
+          Foreign currency code involved on the operation as specified in [ISO 4217]. Must be different from BRL. Examples: USD, EUR, GBP.
+      delivery_date:
+        type: number
+        description: |
+          Number of the days  to settle the exchange operation (settlement date)
+      payment_type:
+        type: string
+        enum:
+          - PAYIN
+          - PAYOUT
+        description: |
+          PAYIN - Send a payment abroad<br />
+          PAYOUT - Receive a payment from abroad.
+      category:
+        type: string
+        enum:
+          - GOODS
+          - SERVICES
+          - DIGITAL_ASSETS
+          - GAMBLING_BETTING
+          - IMPORT
+          - EXPORT
+          - EXPENSES
+        description: |
+          - `GOODS`: Physical or virtual product purchase
+          - `SERVICES`: Services delivery like music streaming, video games etc
+          - `DIGITAL_ASSETS`: Trading of virtual assets such as crypto
+          - `GAMBLING_BETTING`: Payments related to gambling and betting
+          - `EXPENSES`: Amounts to be discounted from payments
+      expenses_type:
+        type: string
+        enum:
+          - LEGAL
+          - MARKETING
+          - FEE
+          - REFUND
+          - FINANCIAL_SERVICES_TAXES
+          - FINANCIAL_SERVICES_FEES
+        example: 'string'
+        description: |
+          Type of expense being paid to or from abroad. Mandatory when informed category is EXPENSES.
+    required:
+      - national_amount
+      - foreign_amount
+      - currency_code
+      - delivery_date
+      - payment_type
+      - category
+createHedge:
+  post:
+    tags:
+      - Hedges
+    consumes:
+      - application/json
+    summary: Hedges Creation Process
+    description: |
+      In order to create a hedge, it is necessary to input the following information:
+      - National or Foreign amount;
+      - Foreign currency ISO code (other than BRL);
+      - Number of days until the settlement date;
+      - Payment type (PAYIN or PAYOUT);
+      - Category (GOODS, SERVICES, EXPENSES, DIGITAL_ASSETS, GAMBLING_BETTING, IMPORT or EXPORT)
+      - Expenses type (FEE, LEGAL, MARKETING, REFUND, FINANCIAL_SERVICES_TAXES or FINANCIAL_SERVICES_FEES) – only in case the category is EXPENSES
+
+      Once all the mentioned fields are filled with valid information, the process starts when the creation is requested [v1/webpayments/hedges].
+
+      The diagram below shows the sequence of steps and status:
+      <br/><br/>
+      <img  src="/assets/images/create-hedge.png">
+      **Explaining the steps:** <br/>
+        **1 - Hedge creation request:** Send a POST call to the [v1/webpayments/hedges] endpoint with the complete payload (all necessary information detailed before). <br/>
+        **2 - Invalid hedge creation call:** WebPayments returns status code 4xx or 5xx and error message. <br />
+        **3 - Valid hedge creation call:** Request created with success.
+        <br/><br/>
+        Note: Once the hedge creation request is created with success, the ID can be used to consult all hedge information
+    requestBody:
+      content:
+        'application/json':
+          schema:
+            $ref: '#/definitions/domain.HedgePostRequest'
+    responses:
+      '201':
+        description: Created
+        $ref: '#/hedgesComponents/responses/Hedges'
+        type: array
+      '401':
+        description: Unauthorized
+        $ref: '#/hedgesComponents/responses/Error401'
+        type: array
+      '412':
+        description: Precondition Failed
+        $ref: '#/hedgesComponents/responses/Error412'
+        type: array
+      '503':
+        description: Service Unavailable
+        $ref: '#/hedgesComponents/responses/Error503'
+        type: array
+getHedgeByID:
+  get:
+    tags:
+      - Hedges
+    summary: Hedges Query Process
+    description: |
+      In order to get all hedge information, it is necessary to use the ID returned in the moment of the creation.
+      The diagram below shows the sequence of steps and status to get a hedge:
+      <br/><br/>
+      <img  src="/assets/images/get-hedge-by-id.png">
+      <br/><br/>
+      **Explaining the steps:**<br/>
+       **1 - Hedge query request:** Send a GET call to the [v1/webpayments/hedges/<hedge_id>]  endpoint with the ID.<br/>
+       **2 - Invalid hedge query call:** WebPayments returns status code 4xx or 5xx and error message.<br/>
+       **3 - Valid hedge query call:** Request created with success.
+    parameters:
+      - description: Hedge identification
+        in: path
+        name: hedge_id
+        required: true
+        schema:
+          type: string
+          format: uuid
+        example: 'a56f37ea-f907-4714-af84-11545f264536'
+    responses:
+      '200':
+        description: Fetch a Hedge
+        $ref: '#/hedgesComponents/responses/Hedges'
+        type: array
+
+      '401':
+        description: Unauthorized
+        $ref: '#/hedgesComponents/responses/Error401'
+        type: array
+
+      '403':
+        description: Forbidden
+        $ref: '#/hedgesComponents/responses/Error403'
+        type: array
+
+      '404':
+        description: Not Found
+        $ref: '#/hedgesComponents/responses/Error404'
+        type: array
+
+      '503':
+        description: Service Unavailable
+        $ref: '#/hedgesComponents/responses/Error503'
+        type: array
+confirmHedge:
+  post:
+    tags:
+      - Hedges
+    consumes:
+      - application/json
+    summary: Hedges Confirmation Process
+    description: |
+      In order to confirm a hedge, it is necessary to use the ID returned at the moment of creation.
+      The diagram below shows the sequence of steps and status to confirm a hedge:
+      <br/><br/>
+      <img  src="/assets/images/confirm-hedge-by-id.png">
+      <br/><br/>
+      **Explaining the steps:** <br/>
+      **1 - Hedge confirmation request:** Send a POST call to the [v1/webpayments/hedges/{hedge_id}/confirm] endpoint with the ID.<br/>
+      **2 - Invalid hedge confirmation call:** WebPayments returns status code 4xx or 5xx and error message.<br/>
+      **3 - Valid hedge confirmation call:** Request created with success.<br/>
+      **4 / 5 - Synchronous status changes:** Synchronous status change is performed. <br/>
+      Success goes to APPROVED and COMPLETED status.<br/>
+      Failure goes to REJECTED status.<br/>
+      A callback is also sent to the client, as example below:<br/>
+      ```json
+        {
+          "ip": "83.1.130.161",
+          "ipv4": "77.235.94.223",
+          "id": "2",
+          "eventType": "HEDGE_STATUS_SUCCESS",
+          "eventTime": "2023-05-26 15:38:04",
+          "hedgeId": "da079487-30d4-4511-8121-151eda4bedfd",
+          "status": "COMPLETED",
+          "partnerId": "c292f7b3-661e-4758-a6dd-dce39035a9b5"
+        }
+      ```
+    parameters:
+      - description: Hedge identification
+        in: path
+        name: hedge_id
+        required: true
+        schema:
+          type: string
+          format: uuid
+        example: 'a56f37ea-f907-4714-af84-11545f264536'
+    responses:
+      '200':
+        $ref: '#/hedgesComponents/responses/ConfimedHedge'
+        type: array
+      '401':
+        description: Unauthorized
+        $ref: '#/hedgesComponents/responses/Error401'
+        type: array
+      '404':
+        description: Not Found
+        $ref: '#/hedgesComponents/responses/Error404'
+        type: array
+      '412':
+        description: Precondition Failed
+        $ref: '#/hedgesComponents/responses/Error412'
+        type: array
+      '503':
+        description: Service Unavailable
+        $ref: '#/hedgesComponents/responses/Error503'
+        type: array
+hedgesComponents:
+  schemas:
+    domain.Hedge:
+    domain.Quote:
+      properties:
+        id:
+          type: string
+        source_currency:
+          type: string
+        target_currency:
+          type: string
+        target_date:
+          type: string
+          example: '2023-05-24'
+        quote_date:
+          type: string
+        price:
+          type: number
+  responses:
+    Hedges:
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              foreign_amount:
+                type: number
+              national_amount:
+                type: number
+              delivery_date:
+                type: number
+              payment_type:
+                type: string
+              category:
+                type: string
+              expenses_type:
+                type: string
+              quote:
+                $ref: '#/hedgesComponents/schemas/domain.Quote'
+                type: object
+              expiration_date:
+                type: string
+                example: '2023-05-24 10:50:43'
+              status:
+                type: string
+                example: 'CREATED'
+    ConfimedHedge:
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              foreign_amount:
+                type: number
+              national_amount:
+                type: number
+              delivery_date:
+                type: number
+              payment_type:
+                type: string
+              category:
+                type: string
+              expenses_type:
+                type: string
+              quote:
+                $ref: '#/hedgesComponents/schemas/domain.Quote'
+                type: object
+              expiration_date:
+                type: string
+                example: '2023-05-24 10:50:43'
+              status:
+                type: string
+                example: 'COMPLETED'
+    Error401:
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+    Error403:
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+    Error404:
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+    Error412:
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+
+    Error503:
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+securitycomponents/schemas:
+  BearerToken:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: '2.0'

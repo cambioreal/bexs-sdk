@@ -1,0 +1,117 @@
+openapi: 3.0.0
+info:
+  title: Account API's
+  version: '1'
+
+paths:
+
+x-webhooks:
+  #ACCOUNT
+  deposit:
+    post:
+      tags:
+        - Notification
+      summary: Deposit Notification
+      description: |
+        When we receive a event of this transaction, e.g: complete or reverse, after process internaly we'll relay this to your server.
+      parameters:
+        - name: KEY
+          description: |
+            must be provided by you we will sent this with every request
+          in: query
+          required: false
+          schema:
+            type: string
+        - in: header
+          name: X-Signature-#
+          description: >
+            Represents the body of this sent request considering only one line break at the end of the structure. Then its signed using HMAC + SHA256 algorithm by the server with agreeded key.
+            The symbol '#' represents the index of the registered active key starting from 0.
+            This header only appears for the partners with "SIGNATURE" authentication type.
+          schema:
+            type: string
+          example: +TCZkPtuwIPcdmYg9lCLMtsTxvXHiNnu3Us4GsTLwvI=
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../../specs/account/banking.yml#/components/schemas/depositCallback'
+            example:
+              $ref: '../../specs/account/banking.yml#/components/examples/depositCallbackExample'
+      responses:
+        '200':
+          description: Your server implementation should return this HTTP status code if the data was received successfully
+          content:
+            text/plain:
+              schema:
+        '4XX':
+          description: If your server implementation return this we will try to deliver the callback again
+          content:
+            text/plain:
+              schema:
+        '5XX':
+          description: If your server implementation return this we will try to deliver the callback again
+          content:
+            text/plain:
+              schema:
+  withdrawal:
+    post:
+      tags:
+        - Notification
+      summary: Withdrawal Notification
+      description: "When we receive a event of this transaction, e.g: complete or reverse, after process internaly we'll relay this to your server."
+      parameters:
+        - name: KEY
+          description: |
+            must be provided by you we will sent this with every request
+          in: query
+          required: false
+          schema:
+            type: string
+        - in: header
+          name: X-Signature-#
+          description: >
+            Represents the body of this sent request considering only one line break at the end of the structure. Then its signed by the server using agreeded key.
+            The symbol '#' represents the index of the registered active key starting from 0.
+            This header only appears for the partners with "SIGNATURE" authentication type.
+          schema:
+            type: string
+          examples:
+            signature-example:
+              value: j9uEQPpeWIgdooN3UZ8Iu2JiuQqR2vRuKO2cGo5cDPI=
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../specs/account/banking.yml#/components/schemas/withdrawStatusChangedCallbackBody'
+            example:
+              headers:
+                X-Signature-1: j9uEQPpeWIgdooN3UZ8Iu2JiuQqR2vRuKO2cGo5cDPI=
+              body:
+                withdraw_id: c6a539f9-29bc-409d-8934-b4372af75391
+                document_number: '65375896825'
+                updated_at: '2021-06-04T19:42:26Z'
+                reversal_code: '1'
+                reversal_reason: 'Credit Recipient Account Closed'
+                payment_method: ELECTRONIC_TRANSFER
+                amount: 5.32
+                type: WITHDRAW
+                status: PROCESSING
+                currency_code: BRL
+                correlation_id: 32d239db-79a0-4632-af94-a8abd5d21d3f
+      responses:
+        '200':
+          description: Your server implementation should return this HTTP status code if the data was received successfully
+          content:
+            text/plain:
+              schema:
+        '4XX':
+          description: If your server implementation return this we will try to deliver the callback again
+          content:
+            text/plain:
+              schema:
+        '5XX':
+          description: If your server implementation return this we will try to deliver the callback again
+          content:
+            text/plain:
+              schema:

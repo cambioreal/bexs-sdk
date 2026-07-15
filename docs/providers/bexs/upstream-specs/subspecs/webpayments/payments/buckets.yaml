@@ -1,0 +1,598 @@
+move:
+  post:
+    tags:
+      - Buckets
+    summary: |
+      Move operations to a bucket
+    description: |
+      The bucket is created in the moment of the move. As soon as the transactions are in the below mentioned status, it is possible to move it to a bucket.<br />
+       - Payments: If the stage is “REGISTRY” and the status “COMPLETED”, use the payment_id to move it to a bucket;<br />
+       - Refund: If the status is “AVAILABLE_SETTLEMENT”, use the cancellation_id  to move it to a bucket.
+
+       *Moves request of transactions in any other status will the rejected.<br />
+
+       **Please note:**
+       - Moves of payment IDs and cancellation IDs must be done separeted;
+       - The bucket can be created using any criteria, mixing different merchants and payments, except for different currencies (it is not possible to have transactions with different currencies in the same bucket: the first one will be moved in and the others will be rejected);
+       - Only REFUND cancellations must be moved to a bucket (it is not necessary to move REVERSAL and UNREGISTER cancellations);
+       - It is possible to move up to 1000 transactions at a time;
+       - In order to settle different operations (payments, expenses and refunds) by the net amount, move all of them to the same bucket.
+       <div style="text-indent: 10px;"><b>Attention: </b>In the moment of the checkout, payments transactions total amount must always be greater than expenses and refund transactions total amounts.</div>
+    parameters:
+      - name: bucket_name
+        in: path
+        description: |
+          Inform a name to the bucket to be created in the move of the selected transactions.  Use any alphanumeric pattern without special characters (such as ‘@', '#', '$', '%’ etc).<br />
+          **Attention:** It will be used in the next steps of the settlement proccess.
+        required: true
+        schema:
+          type: string
+          maximum: 100
+    requestBody:
+      content:
+        'application/json':
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/BucketsMovePayment'
+              - $ref: '#/components/schemas/BucketsMoveCancellation'
+    responses:
+      '201':
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/AnswerMove'
+      '400':
+        $ref: './responses.yaml#/BadRequestFailure'
+      '401':
+        $ref: './responses.yaml#/Unauthorized'
+      '409':
+        $ref: './responses.yaml#/Conflict'
+      '412':
+        $ref: './responses.yaml#/PreconditionFailure'
+      '500':
+        $ref: './responses.yaml#/ServerFailure'
+      '503':
+        $ref: './responses.yaml#/ServiceUnavailable'
+get:
+  get:
+    tags:
+      - Buckets
+    summary: |
+      Query a bucket
+    description: |
+      Use the bucket name to fetch its information.<br />
+      It is also possible to use the parameters mentioned below to filter especific information (you can fill one or more fields separated with comma).
+    parameters:
+      - description: The bucket name
+        in: path
+        name: bucket_name
+        required: true
+        schema:
+          type: string
+      - schema:
+          $ref: '../commons/components.yaml#/components/schemas/OperationType'
+        in: query
+        name: operation_type
+      - schema:
+          $ref: '../commons/components.yaml#/components/schemas/PaymentType'
+        in: query
+        name: payment_type
+        required: false
+      - schema:
+          $ref: '../commons/components.yaml#/components/schemas/ProductCategory'
+        in: query
+        required: false
+        name: product_category
+      - schema:
+          $ref: '../commons/components.yaml#/components/schemas/Stage'
+        in: query
+        name: stage
+      - schema:
+          $ref: '../commons/components.yaml#/components/schemas/BucketStatus'
+        in: query
+        name: status
+      - description: The initial of pagination
+        in: query
+        name: offset
+        schema:
+          type: integer
+      - description: The final of pagination
+        in: query
+        name: limit
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: |
+          Bucket's information.
+        content:
+          'application/json':
+            schema:
+              items:
+                $ref: '#/components/schemas/entity.Bucket'
+              type: array
+      '400':
+        $ref: './responses.yaml#/BadRequestFailure'
+      '401':
+        $ref: './responses.yaml#/Unauthorized'
+      '409':
+        $ref: './responses.yaml#/Conflict'
+      '412':
+        $ref: './responses.yaml#/PreconditionFailure'
+      '500':
+        $ref: './responses.yaml#/ServerFailure'
+      '503':
+        $ref: './responses.yaml#/ServiceUnavailable'
+bucket-balance:
+  get:
+    tags:
+      - Buckets
+    consumes:
+      - application/json
+    summary: Bucket balance
+    description: |
+      Use the bucket name to fetch its balance, separated by merchant.<br /><br />
+      **Important:**
+        - The amount displayed may not be the final one registered in the FX operation, due to rounding and applied taxes;
+        - Once the bucket checkout is requested, it is not possible to fetch its balance anymore.
+    parameters:
+      - description: The bucket name
+        in: path
+        name: bucket_name
+        required: true
+        schema:
+          type: string
+    produces:
+      - application/json
+    responses:
+      '200':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/entity.BucketBalance'
+      '400':
+        $ref: './responses.yaml#/BadRequestFailure'
+      '401':
+        $ref: './responses.yaml#/Unauthorized'
+      '409':
+        $ref: './responses.yaml#/Conflict'
+      '412':
+        $ref: './responses.yaml#/PreconditionFailure'
+      '500':
+        $ref: './responses.yaml#/ServerFailure'
+      '503':
+        $ref: './responses.yaml#/ServiceUnavailable'
+bucket-sum:
+  get:
+    tags:
+      - Buckets
+    consumes:
+      - application/json
+    summary: Bucket sum
+    description: |
+      Use the bucket name to fetch the total amounts in it.<br />
+      It is also possible to use the parameters mentioned below to filter especific information (you can fill one or more fields separated with comma).<br /><br />
+      **Important:** The amount displayed may not be the final one registered in the FX operation, due to rounding and applied taxes.
+    parameters:
+      - description: The bucket name
+        in: path
+        name: bucket_name
+        required: true
+        schema:
+          type: string
+      - schema:
+          $ref: '../commons/components.yaml#/components/schemas/OperationType'
+        in: query
+        name: operation_type
+      - schema:
+          $ref: '../commons/components.yaml#/components/schemas/PaymentType'
+        in: query
+        name: payment_type
+      - schema:
+          $ref: '../commons/components.yaml#/components/schemas/ProductCategory'
+        in: query
+        name: product_category
+      - schema:
+          $ref: '../commons/components.yaml#/components/schemas/Stage'
+        name: stage
+        in: query
+      - schema:
+          $ref: '../commons/components.yaml#/components/schemas/BucketStatus'
+        in: query
+        name: status
+      - description: The initial of pagination
+        in: query
+        name: offset
+        schema:
+          type: integer
+      - description: The final of pagination
+        in: query
+        name: limit
+        schema:
+          type: integer
+    responses:
+      '200':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/entity.BucketSum'
+      '400':
+        $ref: './responses.yaml#/BadRequestFailure'
+      '401':
+        $ref: './responses.yaml#/Unauthorized'
+      '409':
+        $ref: './responses.yaml#/Conflict'
+      '412':
+        $ref: './responses.yaml#/PreconditionFailure'
+      '500':
+        $ref: './responses.yaml#/ServerFailure'
+      '503':
+        $ref: './responses.yaml#/ServiceUnavailable'
+checkout:
+  post:
+    tags:
+      - Buckets
+    summary: |
+      Submit a bucket to checkout
+    description: |
+      Use the bucket checkout to request the settlement of the transactions in it (that were previously registered as FX operation(s) in Brazilian Central Bank). That means that the payment itself will be completed within the agreeded flow for the operation.<br />
+
+      **Attention:**
+        - Payments transactions total amount must always be greater than expenses and refund transactions total amounts;
+        - Once requested, the checkout can not be cancelled via API. If there is any problem in the proccess, please contact our team (costs may be applicable);
+        - The checkout must always be done before the maximum settlement date (considering the flow) agreed for the operation.<br />
+        Otherwise, it will be rejected and the FX operation(s) cancelled (costs may be applicable).
+    parameters:
+      - name: bucket_name
+        in: path
+        description: |
+          The bucket name
+        required: true
+        schema:
+          type: string
+    responses:
+      '201':
+        content:
+          'application/json':
+            schema:
+              $ref: '#/components/schemas/AnswerMove'
+      '400':
+        $ref: './responses.yaml#/BadRequestFailure'
+      '401':
+        $ref: './responses.yaml#/Unauthorized'
+      '409':
+        $ref: './responses.yaml#/Conflict'
+      '412':
+        $ref: './responses.yaml#/PreconditionFailure'
+      '500':
+        $ref: './responses.yaml#/ServerFailure'
+      '503':
+        $ref: './responses.yaml#/ServiceUnavailable'
+components:
+  schemas:
+    Bucket:
+      type: array
+      items:
+        type: object
+        properties:
+          payment_type:
+            description: |
+              Payment type, the following are the possible values:
+                PAYIN  - Send a payment to a foreign country
+                PAYOUT - Receive a payment from a foreign the country
+            type: string
+            enum:
+              - PAYIN
+              - PAYOUT
+          operation_type:
+            description: |
+              Operation type, the following are the possible values:
+                CANCELLATION: Cancellation operation
+                PAYMENT: Payment operation
+            type: string
+            enum:
+              - CANCELLATION
+              - PAYMENT
+          product_category:
+            description: |
+              - `GOODS`: Physical or virtual product purchase
+              - `SERVICES`: Services delivery like music streaming, video games etc
+              - `DIGITAL_ASSETS`: Trading of virtual assets such as crypto
+              - `GAMBLING_BETTING`: Payments related to gambling and betting
+            type: string
+            enum:
+              - GOODS
+              - SERVICES
+              - EXPENSES
+            example: GOODS
+          operations_count:
+            description: |
+              Operation count
+            type: number
+          foreign_gross_amount:
+            description: |
+              Gross amount in foreign currency, use two decimal places.
+            type: number
+            format: float
+            maximum: 999999999999.99
+            minimum: 0.01
+          foreign_net_amount:
+            description: |
+              Net amount in foreign currency, use two decimal places.
+            type: number
+            format: float
+            maximum: 999999999999.99
+            minimum: 0.01
+          national_gross_amount:
+            description: |
+              Gross amount in national currency, use two decimal places.
+            type: number
+            format: float
+            maximum: 999999999999.99
+            minimum: 0.01
+          national_net_amount:
+            description: |
+              Net amount in national currency, use two decimal places.
+            type: number
+            format: float
+            maximum: 999999999999.99
+            minimum: 0.01
+    Job:
+      type: object
+      description: |
+        Job returned on the async query operations.
+      required:
+        - id
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+    BucketsCheckout:
+      type: object
+      required:
+        - operation_type
+      properties:
+        operation_type:
+          type: string
+          enum:
+            - PAYMENT
+            - CANCELLATION
+    AwnserCheckout:
+      type: object
+      description: |
+        created
+    AnswerMove:
+      properties:
+        id:
+          type: string
+      type: object
+    BucketsMovePayment:
+      title: Payment
+      type: object
+      required:
+        - payment_ids
+      properties:
+        payment_ids:
+          type: array
+          example: ['a161b41g-0a60-11eb-adc1-1234ac620902']
+          description: |
+            Move up to 1000 `payment_ids` at a time
+    BucketsMoveCancellation:
+      title: Cancellation
+      type: object
+      required:
+        - cancellation_ids
+      properties:
+        cancellation_ids:
+          type: array
+          example: ['a161b41g-0a60-11eb-adc1-1234ac620902']
+          description: |
+            Move up to 1000 `cancellation_ids` at a time
+    Id:
+      description: |
+        Operation identification. This hash is unique per partner, and follows the UUID v4 specification.
+      type: string
+      maxLength: 128
+      minLength: 1
+    CurrencyCode:
+      description: |
+        Foreign currency code involved on the operation as specified in [ISO 4217].
+        It must be a currency in which the partner is authorized to operate with us.
+      type: string
+      default: USD
+      maxLength: 3
+      minLength: 3
+    entity.BucketBalance:
+      properties:
+        merchant_balance_map:
+          type: object
+          properties:
+            type: object
+            merchant_id:
+              type: object
+              properties:
+                coin_balance_map:
+                  type: object
+                  properties:
+                    currency_code:
+                      type: object
+                      properties:
+                        goods_credits:
+                          type: object
+                          properties:
+                            credit:
+                              description: |
+                                Total amount of credit by `GOODS` product category(
+                                  Physical or virtual product purchase 
+                                )
+                              type: number
+                              format: float
+                              example: 60
+                            total_credit_remaining:
+                              description: |
+                                Remaining amount of credits subtracting debits, by `GOODS` product category
+                              type: number
+                              format: float
+                              example: 45
+                        service_credits:
+                          type: object
+                          properties:
+                            credit:
+                              description: |
+                                Total amount of `SERVICE` product category(
+                                  Service like a music streaming, real estate renting, or something similar
+                                )
+                              type: number
+                              format: float
+                              example: 0
+                            total_credit_remaining:
+                              description: |
+                                Remaining amount of credits subtracting debits, by `SERVICES` product category
+                              type: number
+                              format: float
+                              example: 0
+                        take_rate_debits:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              debit:
+                                type: number
+                                format: float
+                                example: 10
+                              take_rate_debits:
+                                type: number
+                                format: float
+                                example: 10
+                              product_category:
+                                $ref: '../commons/components.yaml#/components/schemas/ProductCategory'
+                        expense_debits:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              debit:
+                                type: number
+                                format: float
+                                example: 5
+                              total_debit_remaining:
+                                type: number
+                                format: float
+                                example: 5
+                              expense_type:
+                                $ref: '../commons/components.yaml#/components/schemas/ExpenseType'
+                        cancellation_debits:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              debit:
+                                type: number
+                                format: float
+                                example: 0
+                              total_debit_remaining:
+                                type: number
+                                format: float
+                                example: 0
+                              product_category:
+                                $ref: '../commons/components.yaml#/components/schemas/ProductCategory'
+                        total_credits_remaining:
+                          type: number
+                          format: float
+                          example: 45
+                          description: Remaining credits of all product categories
+                        total_debits_remaining:
+                          type: number
+                          format: float
+                          example: 15
+                          description: Remaining debits of all debit types
+    entity.BucketSum:
+      properties:
+        partner_id:
+          type: string
+        bucket_name:
+          type: string
+        groups:
+          type: array
+          items:
+            description:
+            type: object
+            properties:
+              headers:
+                properties:
+                  operation_type:
+                    type: string
+                    example: 'PAYMENT'
+                  payment_type:
+                    type: string
+                    example: 'PAYOUT'
+                  product_category:
+                    type: string
+                    example: 'EXPENSES'
+                  expense_type:
+                    type: string
+                    example: 'LEGAL'
+              sums:
+                properties:
+                  foreign_gross_amount:
+                    type: float64
+                    example: 0
+                  national_gross_amount:
+                    type: float64
+                    example: 0
+                  foreign_net_amount:
+                    type: float64
+                    example: 0
+                  national_net_amount:
+                    type: float64
+                    example: 0
+    entity.Bucket:
+      properties:
+        bucket_name:
+          type: string
+        cancellation_id:
+          type: string
+        checkout_id:
+          type: string
+        contract_number:
+          type: string
+        created_at:
+          type: datetime
+          example: '2019-08-24T14:15:22Z'
+        currency_iso_code:
+          type: string
+        exchange_rate:
+          type: number
+        expense_type:
+          type: string
+        foreign_gross_amount:
+          type: number
+        foreign_net_amount:
+          type: number
+        id:
+          type: string
+        national_gross_amount:
+          type: number
+        national_net_amount:
+          type: number
+        operation_type:
+          type: string
+        partner_id:
+          type: string
+        payee_id:
+          type: string
+        payment_id:
+          type: string
+        payment_type:
+          type: string
+        product_category:
+          type: string
+        stage:
+          type: string
+        status:
+          type: string
+        updated_at:
+          type: datetime
+          example: '2019-08-24T14:15:22Z'
+      type: object

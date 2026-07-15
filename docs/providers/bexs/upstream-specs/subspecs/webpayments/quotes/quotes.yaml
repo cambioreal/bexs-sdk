@@ -1,0 +1,133 @@
+quotes:
+  get:
+    tags:
+      - Quotes
+    sumary: Exchange price provider
+    description: Exchange price provider
+    parameters:
+      - schema:
+          $ref: '../commons/components.yaml#/components/schemas/CurrencyCode'
+        in: query
+        name: currency_code
+        required: true
+      - schema:
+          $ref: '../commons/components.yaml#/components/schemas/ProductCategory'
+        in: query
+        name: category
+        required: true
+      - schema:
+          $ref: '../commons/components.yaml#/components/schemas/ExpenseType'
+        in: query
+        name: expense_type
+      - schema:
+          $ref: '../commons/components.yaml#/components/schemas/PaymentType'
+        in: query
+        name: payment_type
+        required: true
+    responses:
+      '200':
+        description: Fetch an exchange price
+        $ref: '#/quotesComponents/responses/Quotes'
+        type: array
+
+      '401':
+        description: Unauthorized
+        $ref: '#/quotesComponents/responses/Error401'
+        type: array
+
+      '403':
+        description: Forbidden
+        $ref: '#/quotesComponents/responses/Error403'
+        type: array
+
+      '404':
+        description: Not Found
+        $ref: '#/quotesComponents/responses/Error404'
+        type: array
+
+      '409':
+        description: Conflict
+        $ref: '#/quotesComponents/responses/Error409'
+        type: array
+
+      '503':
+        description: Service Unavailable
+        $ref: '#/quotesComponents/responses/Error503'
+        type: array
+quotesComponents:
+  schemas:
+    domain.Price:
+      properties:
+        date:
+          type: string
+          example: '2019-10-15'
+        price:
+          type: number
+          example: 4.3108
+      type: object
+  responses:
+    Quotes:
+      content:
+        'application/json':
+          schema:
+            type: array
+            items:
+              properties:
+                lastUpdate:
+                  type: string
+                  example: '2019-10-15T10:21:30.382183866-03:00'
+                prices:
+                  items:
+                    $ref: '#/quotesComponents/schemas/domain.Price'
+                  type: array
+                requestId:
+                  type: string
+                currency_code:
+                  type: string
+                  example: 'USD'
+    Error401:
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+    Error403:
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+    Error404:
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+    Error409:
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+    Error503:
+      content:
+        'application/json':
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+securitycomponents/schemas:
+  BearerToken:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: '2.0'

@@ -1,0 +1,1133 @@
+openapi: 3.0.0
+info:
+  title: Account API's
+  version: '1'
+
+components:
+  schemas:
+    paymentMethods:
+      description: >
+        By which method the payment will be made. Available options
+        are: __ELECTRONIC_TRANSFER__ for TED, or __PIX__ for Instant Payments.</br>
+        If not filled in, the default value will be __ELECTRONIC_TRANSFER__.
+      type: string
+      enum:
+        - ELECTRONIC_TRANSFER
+        - PIX
+    withdrawStatus:
+      type: string
+      enum:
+        - PROCESSING
+        - COMPLETED
+        - REVERTED
+      description: >
+        The status field refers to the status of a transaction.
+        If a transaction is "PROCESSING", it is still yet to be "COMPLETED" or "REVERTED".
+        This field exists to differentiate the events as the response shows us all the records of a selected date.
+        Transaction IDs can be presented as duplicated if the "COMPLETED" or "REVERTED" events happened
+        on the same date searched that includes the "PROCESSING" event.
+        In this case, the status will differ from event to event.
+        For the final balance, it only considers the "COMPLETED" or "REVERTED".
+    sandboxDepositRequest:
+      properties:
+        amount:
+          description: must be greater than 0 with most 2 decimal places
+          type: number
+          format: double
+          pattern: \d+\.\d{2}
+        payment_method:
+          $ref: '#/components/schemas/paymentMethods'
+        qrcode_external_id:
+          description: >-
+            The external identifier used to generate qr-code. It will be used to change the qr-code status
+            to PAID. If "payment_method" is not "PIX", the "qrcode_external_id" field will be discarded
+          type: string
+        source:
+          type: object
+          properties:
+            document:
+              description: >-
+                Document of payer that you want to simulate the deposit. For PIX deposit simulation with
+                qr-code, the payer document must be the same has been sent when the qr-code was generated
+              type: string
+            bank_ispb:
+              description: >-
+                This is the bank ISPB wich you want to simulate the money is coming from. Must be used an ISPB valid
+                for Bacen (Brazilian Central Bank)
+              type: string
+            number:
+              description: >-
+                Account number with you want to simulate the money is coming from. May be used a random numeric
+                number.
+              type: string
+              format: number
+              maximum: 9
+            agency_number:
+              description: >-
+                Agency number with you want to simulate the money is coming from
+              type: string
+          required:
+            - document
+            - bank_ispb
+            - number
+            - agency_number
+      required:
+        - amount
+        - payment_method
+        - source
+    withdrawRequest:
+      properties:
+        correlation_id:
+          description: An identifier provided by the API caller to reference the transaction in future calls.
+          type: string
+        amount:
+          description: Must be greater than 0 with most 2 decimal places.
+          type: number
+          format: double
+          pattern: \d+\.\d{2}
+        payment_method:
+          $ref: '#/components/schemas/paymentMethods'
+        target:
+          type: object
+          properties:
+            customer_id:
+              description: Identifier of profile account generated when profile was registered.
+              type: string
+            bank_account_id:
+              description: Identifier of external bank account provided when profile was registered.
+              type: string
+            pix_key:
+              description: >-
+                Alias for a registered external bank account, used for instant payment (PIX).</br>
+                Must be a valid CPF/CNPJ, email, smartphone number or
+                32-character-UUID (also known as EVP - which stands for "Virtual Payment Address").</br>
+                It's optional if `bank_account_id` is being used, otherwise it must be present within the request.
+              type: string
+            bank_account:
+              description: Bank account number and digit.
+              type: string
+            bank_account_type:
+              description: >
+                Type of bank account. This field is optional for PIX transactions using `pix_key`.</br>
+                The possible values are:
+                "CURRENT_ACCOUNT": A current account (also known as checking account) is a type of bank account that allows deposits and withdrawals, typically used for daily transactions.
+                "SALARY_ACCOUNT": A salary account is a type of bank account that is specifically designed for receiving salary payments.
+                "SAVINGS_ACCOUNT": A savings account is a type of bank account that is primarily used for saving money and earning interest.
+              type: string
+              enum: [CURRENT_ACCOUNT, SALARY_ACCOUNT, SAVINGS_ACCOUNT]
+            bank_agency:
+              description: Bank agency number.
+              type: string
+            document_number:
+              description: Customer document number/ID number (CPF/CNPJ).
+              type: string
+            full_name:
+              description: Customer full name.
+              type: string
+            bank_ispb:
+              description: Brazilian Payment System Identifier of the target bank.
+              type: string
+          required:
+            - customer_id
+            - bank_account_type
+        source:
+          type: object
+          description: Used to inform the source of the withdrawal transaction. If informed document_number or profile_id are required. This is valid only for partners with de-centralized balance
+          properties:
+            document_number:
+              description: Sender document number/ID number (CPF/CNPJ).
+              type: string
+            profile_id:
+              description: Identifier of profile account generated when profile was registered.
+              type: string
+        pix_message:
+            type: string
+            example: "Payment for order #12345"
+            description: "Optional message that will be included in the PIX transfer"
+      required:
+        - correlation_id
+        - amount
+        - target
+    withdrawResponse:
+      properties:
+        id:
+          description: Withdraw ID
+          type: string
+          pattern: uuid
+        payment_method:
+          $ref: '#/components/schemas/paymentMethods'
+        status:
+          $ref: '#/components/schemas/withdrawStatus'
+        created_at:
+          type: string
+          pattern: RFC-3339Nano
+        reversal_code:
+          type: integer
+        reversal_reason:
+          type: string
+    withdrawCreated:
+      properties:
+        id:
+          description: Withdrawal ID
+          type: string
+          pattern: uuid
+        correlation_id:
+          description: Correlation ID
+          type: string
+          pattern: uuid
+        payment_method:
+          $ref: '#/components/schemas/paymentMethods'
+        status:
+          $ref: '#/components/schemas/withdrawStatus'
+        created_at:
+          type: string
+          pattern: RFC-3339Nano
+        reversal_code:
+          type: integer
+        reversal_reason:
+          type: string
+    account:
+      properties:
+        customer_id:
+          type: string
+        document_number:
+          type: string
+        full_name:
+          type: string
+        agency_number:
+          type: string
+        agency_digit:
+          type: string
+        number:
+          type: string
+    movement:
+      description: ''
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+          example: '2021-06-04T19:42:26Z'
+          pattern: RFC-3339Nano
+        debit:
+          type: number
+          format: double
+          description: Always will be a positive value and if present will represent an outbound amount.
+        credit:
+          type: number
+          format: double
+          description: Always will be a positive value and if present will represent an inbound amount.
+    transaction:
+      properties:
+        id:
+          type: string
+          description: internal transaction id
+        correlation_id:
+          type: string
+          description: client defined id
+        gateway_correlation_id:
+          type: string
+          description: id defined by our gateway/partner/network
+        type:
+          type: string
+        metadata:
+          type: object
+        counterparty_id:
+          type: string
+        source:
+          $ref: '#/components/schemas/account'
+          description: which account has originated the transaction
+        target:
+          description: which account has received the transaction
+          $ref: '#/components/schemas/account'
+    records:
+      properties:
+        movement:
+          $ref: '#/components/schemas/movement'
+        transaction:
+          $ref: '#/components/schemas/transaction'
+    statementResponse:
+      properties:
+        account:
+          $ref: '#/components/schemas/account'
+        previous_balance:
+          description: previous day consolidated balance
+          type: number
+          format: double
+        date:
+          description: from which date the statement start
+          type: string
+          format: date
+          pattern: YYYY-dd-mm
+        actual_balance:
+          description: intermediary balance considering the records for the selected period
+          type: number
+          format: double
+        records:
+          description: list of transactions
+          type: array
+          items:
+            $ref: '#/components/schemas/records'
+    withdrawStatusChangedCallbackBody:
+      properties:
+        withdraw_id:
+          type: string
+        document_number:
+          type: string
+        updated_at:
+          type: string
+          pattern: RFC-3339Nano
+        reversal_code:
+          type: string
+        reversal_reason:
+          type: string
+          description: >
+            <details>
+              <summary>Possible values for reversal_code and reversal_reason fields:</summary>
+              <table>
+                <tr>
+                  <td>reversal_code</td>
+                  <td>reversal_reason</td>
+                </tr>
+                <tr>
+                  <td>1</td>
+                  <td>Credit Recipient Account Closed</td>
+                </tr>
+                <tr>
+                  <td>10</td>
+                  <td>Divergent Value - Barcode Documents</td>
+                </tr>
+                <tr>
+                  <td>11</td>
+                  <td>Receipt made after the deadline - Barcode documents</td>
+                </tr>
+                <tr>
+                  <td>12</td>
+                  <td>Register with Inconsistency - Barcode documents</td>
+                </tr>
+                <tr>
+                  <td>13</td>
+                  <td>Duplicate Register - Barcode documents</td>
+                </tr>
+                <tr>
+                  <td>14</td>
+                  <td>Unidentified beneficiary - Barcode documents</td>
+                </tr>
+                <tr>
+                  <td>15</td>
+                  <td>Invalid Judicial Deposit Identification</td>
+                </tr>
+                <tr>
+                  <td>16</td>
+                  <td>Message STR0020/PAG0116 outside the time defined for the business</td>
+                </tr>
+                <tr>
+                  <td>17</td>
+                  <td>Invalid contract number</td>
+                </tr>
+                <tr>
+                  <td>18</td>
+                  <td>Duplicate value</td>
+                </tr>
+                <tr>
+                  <td>19</td>
+                  <td>Financial transactions linked to terrorism and its financing</td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td>Invalid Credit Recipient Agency or Account</td>
+                </tr>
+                <tr>
+                  <td>20</td>
+                  <td>FGTS document not presented for authentication</td>
+                </tr>
+                <tr>
+                  <td>21</td>
+                  <td>Return of Payments made by the Treasury</td>
+                </tr>
+                <tr>
+                  <td>22</td>
+                  <td>Banking Order Return by the Financial Agent</td>
+                </tr>
+                <tr>
+                  <td>23</td>
+                  <td>Devolution's filling error</td>
+                </tr>
+                <tr>
+                  <td>24</td>
+                  <td>Collection Document's filling error</td>
+                </tr>
+                <tr>
+                  <td>25</td>
+                  <td>Direct Deposit's filling error</td>
+                </tr>
+                <tr>
+                  <td>26</td>
+                  <td>Return of payment of taxes requested by the FI</td>
+                </tr>
+                <tr>
+                  <td>27</td>
+                  <td>Return of Overpayment authorized by the Brazil's Federal Revenue Service</td>
+                </tr>
+                <tr>
+                  <td>28</td>
+                  <td>Credit not withdrawn - expiration of the stipulated period</td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>Absence or Divergence in the Indication of the CPF/CNPJ</td>
+                </tr>
+                <tr>
+                  <td>31</td>
+                  <td>CPF/CNPJ unsuitable with the Federal Revenue Service of Brazil</td>
+                </tr>
+                <tr>
+                  <td>4</td>
+                  <td>Invalid Message for Transaction Type or Purpose.</td>
+                </tr>
+                <tr>
+                  <td>40</td>
+                  <td>Invalid Currency Code - Barcode documents</td>
+                </tr>
+                <tr>
+                  <td>5</td>
+                  <td>Divergence in Ownership</td>
+                </tr>
+                <tr>
+                  <td>51</td>
+                  <td>Payment slip settled for a greater or lesser amount - Barcode documents</td>
+                </tr>
+                <tr>
+                  <td>52</td>
+                  <td>Payment slip received after the due date without fees and other charges - Barcode documents</td>
+                </tr>
+                <tr>
+                  <td>53</td>
+                  <td>Improper presentation - Barcode documents</td>
+                </tr>
+                <tr>
+                  <td>6</td>
+                  <td>Insufficient Transfer for Indicated Purpose</td>
+                </tr>
+                <tr>
+                  <td>61</td>
+                  <td>Transfer exceeds limit for destination account type</td>
+                </tr>
+                <tr>
+                  <td>63</td>
+                  <td>Barcode not in accordance with specifications - Barcode documents</td>
+                </tr>
+                <tr>
+                  <td>68</td>
+                  <td>Payment slip already settled</td>
+                </tr>
+                <tr>
+                  <td>69</td>
+                  <td>Payment slips settled in dupicate on the same day - Barcode documents</td>
+                </tr>
+                <tr>
+                  <td>7</td>
+                  <td>Difference for greater amount</td>
+                </tr>
+                <tr>
+                  <td>70</td>
+                  <td>By customer request of the Receiving Participating Institution</td>
+                </tr>
+                <tr>
+                  <td>71</td>
+                  <td>Payment slip received with unforeseen discount or rebate - Barcode documents</td>
+                </tr>
+                <tr>
+                  <td>72</td>
+                  <td>Payment non-compliance</td>
+                </tr>
+                <tr>
+                  <td>73</td>
+                  <td>Unidentified beneficiary - Barcode documents</td>
+                </tr>
+                <tr>
+                  <td>74</td>
+                  <td>Invalid Beneficiary CPF/CNPJ or does not match the payment slip record at the Recipient FI base - Barcode documents</td>
+                </tr>
+                <tr>
+                  <td>75</td>
+                  <td>Invalid Payer CPF/CNPJ or does not match the payment slip record at the Recipient FI base - Barcode documents</td>
+                </tr>
+                <tr>
+                  <td>76</td>
+                  <td>Copy not forwarded by the receiving FI within the stipulated period - Barcode documents</td>
+                </tr>
+                <tr>
+                  <td>77</td>
+                  <td>Payment Slip in notary's office or protested - Barcode documents</td>
+                </tr>
+                <tr>
+                  <td>78</td>
+                  <td>Portability not found</td>
+                </tr>
+                <tr>
+                  <td>79</td>
+                  <td>Portability refused due to value divergence</td>
+                </tr>
+                <tr>
+                  <td>8</td>
+                  <td>Invalid Transfer Identifier Code</td>
+                </tr>
+                <tr>
+                  <td>80</td>
+                  <td>Portability not registered in the credit transfer center</td>
+                </tr>
+                <tr>
+                  <td>81</td>
+                  <td>Portability retained by the original creditor institution</td>
+                </tr>
+                <tr>
+                  <td>82</td>
+                  <td>Payment slip differing from the Centralized Payment Slip Base</td>
+                </tr>
+                <tr>
+                  <td>83</td>
+                  <td>Payment Slip does not exist in the Centralized Payment Slip Database</td>
+                </tr>
+                <tr>
+                  <td>84</td>
+                  <td>Invalid credit recipient account for transaction type or purpose</td>
+                </tr>
+                <tr>
+                  <td>9</td>
+                  <td>Return for Fraud</td>
+                </tr>
+                <tr>
+                  <td>invExtAccount</td>
+                  <td>invalid external account. bank {bank compe code} is only for companies</td>
+                </tr>
+              </table>
+            </details>
+        payment_method:
+          $ref: '#/components/schemas/paymentMethods'
+        amount:
+          type: number
+          format: double
+        type:
+          type: string
+        status:
+          $ref: '#/components/schemas/withdrawStatus'
+        currency_code:
+          type: string
+        correlation_id:
+          type: string
+        pix_end_to_end_id:
+          type: string
+          description: unique identifier of this transaction on Bacen, when payment method is PIX (instant payment)
+    depositCallback:
+      properties:
+        deposit_id:
+          type: string
+          description: This ID is filled with deposit ID created by each of our partner and can have multiple formats.
+        document_number:
+          type: string
+        amount:
+          type: number
+          format: double
+        updated_at:
+          type: string
+          pattern: RFC-3339Nano
+        source:
+          type: object
+          properties:
+            agency_number:
+              type: string
+            account_number:
+              type: string
+            bank_ispb:
+              type: string
+            customer_id:
+              type: string
+        type:
+          type: string
+        payment_method:
+          type: string
+          enum:
+            - PIX
+            - ELECTRONIC_TRANSFER
+        currency_code:
+          type: string
+  examples:
+    depositCallbackExample:
+      headers:
+        X-Signature-1: +TCZkPtuwIPcdmYg9lCLMtsTxvXHiNnu3Us4GsTLwvI=
+      body:
+        deposit_id: c6a539f9-29bc-409d-8934-b4372af75391
+        document_number: 65375896825
+        amount: 6.36
+        updated_at: '2021-06-04T19:42:26Z'
+        source:
+          agency_number: 1368
+          account_number: 5343168
+          bank_ispb: 13059145
+          bank_compe: 144
+          customer_id: 925dc1c5-0fd7-4c5d-a27c-f8683089b774
+        type: DEPOSIT
+        payment_method: PIX
+        currency_code: BRL
+
+paths:
+  /v1/banking/accounts/{partner-id}/withdraws:
+    post:
+      operationId: create-withdrawal
+      tags:
+        - Withdraw
+      summary: Perform a Withdrawal
+      description: |
+        Creates a withdrawal transaction.
+
+        The Electronic Transfer (TED) payment method is only valid on weekdays, except public holidays, from 06:35 to 16:30 (Brazilian Time / UTC-3).
+      parameters:
+        - name: X-Idempotency-Key
+          in: header
+          required: false
+          description: Key to identify a unique withdrawal transaction. Optional.
+          schema:
+            type: string
+        - name: partner-id
+          in: path
+          required: true
+          description: The partner identifier.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/withdrawRequest'
+            examples:
+              ted:
+                summary: Electronic Transfer (TED)
+                value: {                          
+                          "correlation_id": "1f6d52eb445095b962af2734080c00c4",
+                          "payment_method":"ELECTRONIC_TRANSFER",
+                          "amount":8.92,
+                          "target": {
+                            "customer_id":"customer-id",
+                            "bank_account_id":"external-account-id"
+                          },
+                          "source": {
+                            "document_number":"12345678901"
+                          }
+                        }
+              pix_customerId_bankAccountId:
+                summary: Pix Using customerId and bank_account_id
+                value: {
+                          "correlation_id": "1f6d52eb445095b962af2734080c00c4",
+                          "payment_method":"PIX",
+                          "amount":8.92,
+                          "target": {
+                            "customer_id":"customer-id",
+                            "bank_account_id":"external-account-id",
+                            "bank_account_type": "SAVINGS_ACCOUNT"
+                          },
+                          "source": {
+                            "profile_id": "uio34hfo-3487yf0-38794"                        
+                          }
+                        }
+              pix_key:
+                summary: Instant Payment (PIX) using Key
+                value: {
+                          "correlation_id": "1f6d52eb445095b962af2734080c00c4",
+                          "payment_method":"PIX",
+                          "amount":10.90,
+                          "target": {
+                            "customer_id":"customer-id",
+                            "pix_key":"pix-key"
+                          }
+                        }
+              pix:
+                summary: Instant Payment (PIX) without a pre-registered key
+                value: {
+                          "correlation_id": "1f6d52eb445095b962af2734080c00c4",
+                          "payment_method":"PIX",
+                          "amount":5.71,
+                          "target": {
+                            "customer_id":"customer-id",
+                            "bank_account": "customer-account-number-and-digit",
+                            "bank_agency": "customer-account-agency",
+                            "document_number": "customer-document-number",
+                            "full_name": "customer-full-name",
+                            "bank_ispb": "customer-bank-account-ispb"
+                          }
+                        }
+      responses:
+        '400':
+          description: Errors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error message
+                    example: "target.account.bank_agency must not be longer than 4"
+                  code:
+                    type: string
+                    description: Error code
+                    example: 'invalidPayload'
+        '404':
+          description: Errors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error message
+                    example: "Pix key was not found"
+                  code:
+                    type: string
+                    description: Error code
+                    example: 'pixKeyNotFound'
+        '201':
+          description: Transaction created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/withdrawCreated'
+    get:
+      operationId: search-withdrawal
+      tags:
+        - Withdraw
+      summary: Search a Withdrawal
+      description: Searches a transaction using `correlation-id` and `withdraw-date`.
+      parameters:
+        - name: partner-id
+          in: path
+          required: true
+          description: The partner identifier.
+          schema:
+            type: string
+        - name: correlation-id
+          in: query
+          required: true
+          description: Identifier provided by the API caller used to reference the created transaction.
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            pattern: YYYY-mm-dd
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/withdrawResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+              examples:
+                notFound:
+                  value:
+                    message: transaction not found
+        '5XX':
+          description: Internal Server Error
+          content:
+            text/plain:
+              schema:
+                properties:
+                  message:
+                    type: string
+              examples:
+                internalError:
+                  value:
+                    message: Internal Server Error
+  /v1/banking/accounts/{partner-id}/withdraws/validate:
+    get:
+      operationId: validate-withdrawal
+      tags:
+        - Withdraw
+      summary: Validate a Withdrawal
+      description: Checks if a given withdrawal transaction is valid before actually performing the operation.
+      parameters:
+        - name: partner-id
+          required: true
+          description: The partner identifier.
+          in: path
+          schema:
+            type: string
+        - name: source
+          description: |
+            The document number of the account owner from which the withdrawal transaction will originate.
+
+            One of the source parameters (`source`, `source-id`) must be informed, but only one of them.
+          in: query
+          schema:
+            type: string
+        - name: source-id
+          description: |
+            The identifier of the account owner from which the withdrawal transaction will originate.
+
+            One of the source parameters (`source`, `source-id`) must be informed, but only one of them.
+          in: query
+          schema:
+            type: string
+        - name: target
+          description: |
+            The document number of the account owner where the withdrawal transaction will go.
+
+            One of the target parameters (`target`, `target-id`) must be informed, but only one of them.
+          in: query
+          schema:
+            type: string
+        - name: target-id
+          description: |
+            The identifier of the account owner where the withdrawal transaction will go.
+
+            One of the target parameters (`target`, `target-id`) must be informed, but only one of them.
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The given withdrawal transaction is valid.
+        '412':
+          description: The given withdrawal transaction is invalid.
+  /v1/banking/accounts/{partner-id}/withdraws/{withdraw-id}:
+    get:
+      operationId: get-withdrawal
+      tags:
+        - Withdraw
+      summary: Get a Withdrawal
+      description: Gets a single withdrawal transaction from using the provided id.
+      parameters:
+        - name: partner-id
+          in: path
+          required: true
+          description: The partner identifier.
+          schema:
+            type: string
+        - name: withdraw-id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            pattern: YYYY-mm-dd
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/withdrawResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+              examples:
+                notFound:
+                  value:
+                    message: transaction not found
+  /v1/banking/accounts/{partner-id}/statements:
+    get:
+      operationId: get-statement
+      parameters:
+        - name: report-type
+          in: query
+          description: >-
+            Which transactions should be retrieved: In[credits], Out[debits] or All[credits and debits]
+          required: true
+          schema:
+            type: string
+            default: All
+            enum:
+              - All
+              - In
+              - Out
+        - name: period-start
+          description: |
+            Start date to the search. \
+            Example: period-start = 2022-09-20, the search brings all the values from 00:00:00 of the day 2022-09-20.\
+            Time Zone considered for the search: 'America/Sao_Paulo' -> UTC-3
+          required: true
+          in: query
+          schema:
+            type: string
+            format: date
+            pattern: YYYY-mm-dd
+        - name: period-end
+          description: |
+            End date to the search, this will not include the selected date in the search. \
+            Example: period-end = 2022-09-21, the search brings all the values until 23:59:59 of the day 2022-09-20.\
+            Time Zone considered for the search: 'America/Sao_Paulo' -> UTC-3
+          required: true
+          in: query
+          schema:
+            type: string
+            format: date
+            pattern: YYYY-mm-dd
+        - name: document
+          description: Filter transactions that where sent by this document number only.
+          required: false
+          in: query
+          schema:
+            type: string
+            pattern: \\d{11}|\\d{14}
+        - name: limit
+          description: How many transactions must be retrieved per call. If limit is not sent or = 0, then all transactions will be retrieved.
+          required: false
+          in: query
+          schema:
+            default: 0
+            type: integer
+        - name: start-after
+          description: |
+            At which point should start the search. This refers to the offset (offset = previous offset + limit).
+            If parameter 'limit' is used and higher than 0, start-after needs do be filled.
+          required: false
+          in: query
+          schema:
+            type: integer
+        - name: format
+          in: query
+          description: Which type of report should be generated
+          required: true
+          schema:
+            type: string
+            default: json
+            enum:
+              - json
+        - name: partner-id
+          required: true
+          description: the account that will originate the withdraw transaction
+          in: path
+          schema:
+            type: string
+      tags:
+        - Statement
+      summary: Get a Statement
+      description: |
+        Allow partner to obtain it's statement
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/statementResponse'
+        '404':
+          description: Not Found
+        '401':
+          description: Unauthorized
+  /v1/banking/accounts/{partner-id}/sandbox/deposits:
+    post:
+      operationId: create-deposit
+      tags:
+        - Deposit
+      summary: Simulate a deposit
+      description: |
+        Simulate a deposit in a specific {partner-id}. This endpoint allows deposit money into the banking account
+        for payment tests.
+
+        When "payment_method" is "PIX" and a "qrcode_external_id" has been informed, the qr-code associated with
+        that id will be changed to PAID status.
+
+        <p>THIS ENDPOINT IS NOT AVAILABLE IN PRODUCTION ENVIRONMENT.<p>
+      parameters:
+        - in: header
+          name: X-Idempotency-Key
+          required: false
+          description: >
+            Key to identify unique deposit transaction. Optional.
+          schema:
+            type: string
+        - name: partner-id
+          required: true
+          description: the account that will receive the money
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/sandboxDepositRequest'
+            examples:
+              ted:
+                summary: Electronic Transfer (TED)
+                value: {
+                  "amount":8.92,
+                  "payment_method":"ELECTRONIC_TRANSFER",
+                  "source": {
+                    "document":"12345678901",
+                    "bank_ispb":"00000000",
+                    "number":"123456789",
+                    "agency_number":"1234"
+                  }
+                }
+              pix:
+                summary: Deposit Instant Payment (PIX)
+                value: {
+                  "amount":8.92,
+                  "payment_method":"PIX",
+                  "source": {
+                    "document":"12345678901",
+                    "bank_ispb":"00000000",
+                    "number":"123456789",
+                    "agency_number":"1234"
+                  }
+                }
+              pix_qrcode:
+                summary: Deposit Instant Payment (PIX) with QR Code
+                value: {
+                  "amount":8.92,
+                  "payment_method":"PIX",
+                  "qrcode_external_id": "abcdef",
+                  "source": {
+                    "document":"12345678901",
+                    "bank_ispb":"00000000",
+                    "number":"123456789",
+                    "agency_number":"1234"
+                  }
+                }
+      responses:
+        4XX:
+          description: errors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+        '404':
+          description: not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        201:
+          description: transaction created successfully
+
+# Due to the fact that the x-webhooks tag is unique and can only be used once in the project structure
+# all webhook declarations have been centered in the file: /specs/webhooks.yml
+x-webhooks:
+  deposit:
+    post:
+      tags:
+        - Notification
+      summary: Deposit Notification
+      description: |
+        When we receive a event of this transaction, e.g: complete or reverse, after process internally we'll relay this to your server.
+      parameters:
+        - in: header
+          name: X-Signature-#
+          description: >
+            Represents the body of this sent request considering only one line break at the end of the structure. Then its signed using HMAC + SHA256 algorithm by the server with agreed key.
+            The symbol '#' represents the index of the registered active key starting from 0.
+            This header only appears for the partners with "SIGNATURE" authentication type.
+          schema:
+            type: string
+          example: +TCZkPtuwIPcdmYg9lCLMtsTxvXHiNnu3Us4GsTLwvI=
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/depositCallback'
+            example:
+              $ref: '#/components/examples/depositCallbackExample'
+      responses:
+        '200':
+          description: Your server implementation should return this HTTP status code if the data was received successfully
+          content:
+            text/plain:
+              schema:
+        '4XX':
+          description: If your server implementation return this we will try to deliver the callback again
+          content:
+            text/plain:
+              schema:
+        '5XX':
+          description: If your server implementation return this we will try to deliver the callback again
+          content:
+            text/plain:
+              schema:
+  withdrawal:
+    post:
+      tags:
+        - Notification
+      summary: Withdrawal Notification
+      description: "When we receive a event of this transaction, e.g: complete or reverse, after process internally we'll relay this to your server."
+      parameters:
+        - in: header
+          name: X-Signature-#
+          description: >
+            Represents the body of this sent request considering only one line break at the end of the structure. Then its signed by the server using agreed key.
+            The symbol '#' represents the index of the registered active key starting from 0.
+            This header only appears for the partners with "SIGNATURE" authentication type.
+          schema:
+            type: string
+          examples:
+            signature-example:
+              value: j9uEQPpeWIgdooN3UZ8Iu2JiuQqR2vRuKO2cGo5cDPI=
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/withdrawStatusChangedCallbackBody'
+            example:
+              headers:
+                X-Signature-1: j9uEQPpeWIgdooN3UZ8Iu2JiuQqR2vRuKO2cGo5cDPI=
+              body:
+                withdraw_id: c6a539f9-29bc-409d-8934-b4372af75391
+                document_number: '65375896825'
+                updated_at: '2021-06-04T19:42:26Z'
+                reversal_code: '1'
+                reversal_reason: 'Credit Recipient Account Closed'
+                payment_method: ELECTRONIC_TRANSFER
+                amount: 5.32
+                type: WITHDRAW
+                status: PROCESSING
+                currency_code: BRL
+                correlation_id: 32d239db-79a0-4632-af94-a8abd5d21d3f
+      responses:
+        '200':
+          description: Your server implementation should return this HTTP status code if the data was received successfully
+          content:
+            text/plain:
+              schema:
+        '4XX':
+          description: If your server implementation return this we will try to deliver the callback again
+          content:
+            text/plain:
+              schema:
+        '5XX':
+          description: If your server implementation return this we will try to deliver the callback again
+          content:
+            text/plain:
+              schema:

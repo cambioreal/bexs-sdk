@@ -1,0 +1,562 @@
+openapi: 3.0.1
+info:
+  title: Digital FX
+  description: |
+    A product that enables our partners to digitally perform the financial exchanges involved in Import, Export, and Investment operations. [Get in touch](https://www.bexs.com.br/en/contact-us/) with **Bexs** to be a registered partner!
+  version: '1'
+
+servers:
+  - url: https://api-sandbox-digitalfx.bexs.com.br
+tags:
+  - name: Idempotency
+    description: |
+      This section explains how the idempotency mechanism was designed to work and what a registered Partner should provide and expect when using it.
+      ## Basic functioning
+      Idempotency mechanisms are implemented to provide more consistency when dealing with distributed transactions across multiple services and domains by avoiding duplicity.
+      Ours basically works by caching the **HTTP response** returned by our APIs and then serving that exact same response for the same **idempotency key** for the following **24 hours** (when the idempotency key expires).
+
+      ### Use case example
+      Let's make an exercise. Imagine you want to create an exchange operation. Suppose now our API took too long to reply and you timed out.
+      The next thing you would normally try is resend the request to create the resource, but you do not want to cause duplicity, given you do not know whether the resource was created or not.
+      That is why you are always required to send us an unique idempotency key to identify your attempt of creating a resource.
+
+      In this example, you would not receive a response for the first request. Next, you are to resend the same request with the same idempotency key. Suppose this time we actually replied quickly with a **201** status.
+      How could you tell if the resource was created on the first attempt rather than on subsequent attempts? That is when the **Idempotent-Replayed** header comes in handy.
+      Whenever you receive this header in a HTTP response, you will know that the response was actually cached and then replayed to you.
+      Given that you received such header, if you try to send new requests reusing the same idempotency key, you are supposed to receive the same response, regardless any changes you might make in the request body.
+
+      >Note that the cache only lasts for **24 hours** counting from the first time we receive an idempotency key. After that we will no longer keep track of the first response sent.
+
+      This is also true for scenarios in which the request did not succeed. Suppose a HTTP response with **400** status code and some validation error message on its body was to be returned to you, but you timed out.
+      If you retry with the same idempotency key and get that **400** status code and see the **Idempotent-Replayed** header, it means you cannot just fix the request body and resend it again hoping to receive a **201** at some point.
+      In such case scenarios, you are supposed to fix what is wrong and then send a different **idempotency key**. So, this means you will have to manage **the keys** you send, the **status code** and the **Idempotent-Replayed** header you receive.
+
+
+      ### Idempotency Key
+      The idempotency key is provided in the form of a mandatory header in some of our endpoints, such as the [create an exchange operation](#tag/Exchange/operation/create-operation) endpoint.
+      This header is identified as ```Idempotency-Key``` and its value has free format with the exception of the length, which is bounded between 16 and 64.
+
+      The following are valid examples of values that can be atributed to the header:
+      * ```353d937a-b1aa-4360-a713-e666d98c4d6b``` (UUIDs)
+      * ```b5a3c796e63b43b54e32321c55d72ce1``` (MD5 hashes)
+      * ```ebbeb13712d2a09d70468e9bb10f9463c9108ac7``` (SHA1 hashes)
+
+      ### How we handle concurrency
+      We implemented a lock system so that ongoing requests hold a lock onto the idempotency key for as long as the processing is happening.
+      While this lock is on, if you retry sending us a request, you are excpected to receive a **409** status code meaning you should wait a bit more before trying to resend again.
+      Eventually the processing is expected to complete and we cache the response was supposed to be returned the first time arround and the lock is released.
+      If you now try to resend, you are expected to receive whatever status code and body the processing yielded.
+
+      ## Currently supported endpoints
+      * [create an exchange operation](#tag/Exchange/operation/create-operation)
+
+      ## We strongly advise against
+      ### Always generating new keys
+      If you timed out using one idempotency key, please do not just generate a new one and resend the request.
+      This would just bypass our idempotency mechanism because a new idempotency key means you are trying to create a different resource than before and, in that case, we are to normally process the new resource, which may cause duplicity.
+      Instead, you should retry with the same key as before until you get a response with the **Idempotent-Replayed** header.
+
+      ### Not handling your retries guided by status code
+      You should always guide your retry attempts considering the status codes are returned wheter or not requests are being replayed (the ones with the **Idempotent-Replayed** header).
+      For example, you might have received a **400** status code for some invalid value inputted by the user.
+      In this case, you are not supposed to just retry with the same *idempotency key*, because you would just get the same response.
+      Instead, you should create a new idempotency key for a new request with the correct value for the field was previously invalid.
+      The understanding here is that you are trying to create a new and different resource than before.
+
+      Suppose now we had some internal problem with our internal dependencies and we could not create your resource. You would probably receive a **500** status code with the ```unexpected error``` message.
+      In this case, our idempotency mechanism would have cached your request, so just retrying with the same idempotency key would not yield a different result.
+      Instead you should retry the request with a different idempotency key.
+
+      Some special cases are the **401** and the **503** status codes, because in these cases, we are not able to cache your request. For such cases, you might be able to reuse the same idempotency key.
+
+
+
+      ## Diagram
+      ![Idempotency Mechanism](/assets/images/idempotency.png)
+  - name: Getting Started
+    description: |
+      This section guides the user of this API into how to register a Company or Individual Customer, one that the partner will create exchange operations on behalf of.
+      ## Creating a Company Customer
+
+      **1. Be a registered Partner wihtin Bexs (have credentials to access our APIs)**
+
+      This is the first essential step in order to operate at the bank. [Get in touch](https://www.bexs.com.br/en/contact-us/) to get your set of credentials.
+
+      **2. Register the main Customer Entity**
+
+      Register your Customer, as described in the [Customer](#tag/Customer) section.
+
+      **3. Register the information subentities of your Company Customer**
+
+      This can be done in no particular order:
+
+      * **3.1:** Register **Contact** information, as described in [Contact](#tag/Contact) section;
+
+      * **3.2:** Register **Address** information, as described in [Customer Address](#tag/Customer-Address) section;
+
+      * **3.3:** Register **Bank Account** information, as described in [Bank Accounts](#tag/Bank-Account) section;
+
+      * **3.4:** Register the **Shareholders** of your company, as described in [Shareholders](#tag/Shareholder-Structure) section;
+
+      * **3.5:** **(optional)** Answer **Environmental, Social and Governance** questions about the company you are registering, as described in [ESG Questions](#tag/ESG-Questions) section.
+      Whether this information is required or not varies by partner;
+
+      * **3.6:** Register all of the **Legal Representatives** of the Company, as described in [Legal Representatives](#tag/Legal-Representative) section.
+        * **3.6.1:** Register the Address subentity for each Legal Representative.
+
+      **4. Declare and send all needed documentation about customer registration**
+
+      It is needed to provide some documents about the company being registered, as well as documents regarding legal representatives of this company.
+      All of the required and optional documents needed to be sent are described in the
+      [Customer Documents](#tag/Customer-Documents) and [Legal Representative Documents](#tag/Legal-Representative-Documents) sections.
+
+      For every document to be registered, a series of two API calls must be performed:
+
+      * **Step 1:** Register the existence of the document via [Customer Documents](#tag/Customer-Documents) and [Legal Representative Documents](#tag/Legal-Representative-Documents) APIs.
+      Keep the `document_id` generated by the creation of the document;
+      * **Step 2:** Upload the respective file of that document via [Document Files](#tag/Document-Files) APIs.
+
+  - name: Customer
+    description: |
+      **Customer** is the main entity, and it represents a registered client that is able to get quotes and perform exchange operations.
+
+      A Customer can either be a **Bexs**' own customer, or a partner customer, only the latter being the scope of this API. Customers registered via this API will be tied to a **Partner**, representing a registered Partner inside Bexs. Partners can use their credentials to perform operations exclusively on the Customers registered by/on behalf of them.
+
+      There are two types of **Customers**:
+
+      - `INDIVIDUAL`: A single, individual, Brazilian citizen, defined by a **CPF**;
+      - `COMPANY`: A company/business, defined by a **CNPJ**.
+
+      **Note:** For now, customers should have strictly **Brazilian** nationality, and all documents/id numbers are validated using *Brazil* document standards (CPF and CNPJ).
+
+  - name: Contact
+    description: |
+      **Contact** is a subentity for a [Customer](#tag/Customer). It is required so that *Bexs*, or the partner that registered that **Customer**, should be able to get in touch, if any additional information is needed. A Customer can have multiple contacts.
+
+      **Note:** A new Contact can only be registered for a Customer of type `COMPANY`. Individual Customers already have contact information attached to its Customer entity.
+
+  - name: Bank Account
+    description: |
+      **Bank Account** is a subentity that represents bank account data for a given [Customer](#tag/Customer). A Customer can have multiple Bank Accounts registered.
+
+      **Note:** Only *Brazilian* Bank accounts can be registered.
+
+  - name: Customer Address
+    description: |
+      **Customer Address** is a subentity for a [Customer](#tag/Customer), representing address information. It can be either an address of a head office for a Customer of type `COMPANY`, or a home address for a Customer of type `INDIVIDUAL`.
+
+      Multiple Customer Address can be registered per Customer.
+
+  - name: Customer Documents
+    description: |
+      **Customer Document** is a subentity for a [Customer](#tag/Customer), representing a registered document related to a Customer. these documents are important in order to check if a Customer is able to operate.
+
+      The endpoints of this entity section serves only to declare that a **Customer** will send the document files listed below, but it is not to send the actual files themselves. Please check the [Document Files](#tag/Document-Files) section to find out how to upload the respective document file **AFTER** registering the document existence in this entity.
+
+      For **Customers** of type `INDIVIDUAL` or `COMPANY`, the following document is accepted:
+      - `KYC`: *Know Your Customer* document.
+      - `REGISTRATION_FORM`: Registration form document
+      - `ACCOUNT_OPENING_CONTRACT`: Account opening contract document
+      - `MANDATORY_STATEMENTS_AGREEMENT_EVIDENCE`: Mandatory statements agreement evidence document
+      - `RADAR`: Registration document that must be made with the Federal Revenue by companies that wish to import or export products
+      - `FWD/FUTURE_FOREIGN_EXCHANGE`: Future foreign exchange document
+      - `CGD/DERIVATIVES`: Derivatives document
+
+      For **Customers** of type `INDIVIDUAL`, these are the following possible documents:
+      - `IDENTIFICATION`: **(Required)** Proof of citizenship document. This document type has the following subtypes:
+          - `CNH`: Brazil ID for Driver's license;
+          - `RG`: Brazil Citizenship ID;
+          - `PASSPORT`: Passport Book;
+          - `RNE`: Brazil Registry of Foreigners
+          - `RNM`: Brazil Immigration Registry
+      - `PROOF_OF_ADDRESS`: **(Required)** Proof of address document;
+      - `INCOME_TAX_DECLARATION`: Tax declaration document. Can be replaced by simply sending the assets' worth of an individual during creation of an individual Customer;
+      - `VISA`: Visa document
+
+
+      For **Customers** of type `COMPANY`, these are the following possible documents:
+      - `CORPORATE_DOCUMENT`: **(Required)** Proof of existence document for the company. Could be either the **social contract** or **social statute** document;
+      - `FINANCIAL_STATEMENT`: **(Required)** Document of financial statement. Could be a **balance/revenue report** document, and must be signed by the company's representative and accountant;
+      - `PROOF_OF_SHAREHOLDER_CHAIN`: Document containing the **chain of shareholders of the company, in a chart**;
+
+      **Note:** `IDENTIFICATION` documents should, alongside its type key, also provide the number and issue authority when registering them
+
+  - name: Document Files
+    description: |
+      Once documents are declared in the [Customer Documents](#tag/Customer-Documents) section for a Customer or [Legal Representative Documents](#tag/Legal-Representative-Documents) section for a Customer, it is now required to send the actual files themselves in order for Bexs to perform internal validations.
+
+      Files can be sent using the generated id provided when the document was registered, alongside a `file_side` field informing whether the file image is the `FRONT` or `BACK` of the Document, or if the document is one-sided (`ALL`).
+
+  - name: ESG Questions
+    description: |
+      **ESG** Questions are short term for **Environmental, Social and Governance** Questions. The requirement of these answers varies by partner.
+
+      **ESG Questions** is a subentity to an already registered **Customer** of type `COMPANY`. Individual Customers do not answer for ESG Questions.
+
+      Currently, there are four ESG questions required for a company **Customer**:
+      - **Criminal Activity:** ( *True* / *False* ) Has the company been involved, in the past 5 years, in a judicial inquiry, lawsuit, or have been fined by actions regarding socioenvironmental issues?
+      - **Conduct Adjustment Term:** ( *True* / *False* ) Has the company signed, in the past 5 years, a *Conduct Adjustment Term* with legitimized public agencies?
+      - **Subject to Environment Licensing:** ( *True* / *False* ) Are company activities subject to environmental licensing?
+      - **Has Environmental Licenses:** ( *True* / *False* ) Does the company declare to have all required enviromental licenses?
+
+      These terms have, respectively, the following aliases (keys) in the ESG Questions entity APIs:
+      - `HAS_CRIMINAL_ACTIVITY`
+      - `HAS_CONDUCT_ADJUSTMENT_TERM`
+      - `IS_SUBJECT_TO_ENVIRONMENTAL_LICENSING`
+      - `HAS_ALL_ENVIRONMENTAL_LICENSES`
+
+  - name: Legal Representative
+    description: |
+      A **Legal Representative** is an individual within the company who holds a special position therein and is the officer with the legal power to represent, and enter into binding obligations on behalf of, the entity s/he represents in accordance with the law or the articles of association of the company.
+
+      A Legal Representative is tied to an already registered [Customer](#tag/Customer), of type `COMPANY`, which, in turn, can have **multiple Legal Representatives** within it.
+
+  - name: Shareholder Structure
+    description: >-
+      Information about the Shareholder structure of an existing [Customer](#tag/Customer).
+      In this section you can register the company's corporate structure, considering the entire chain until reaching the final beneficiaries.
+      You can also choose to send the corporate organization chart, in the documents section. In this case, it is not necessary to register the members in this section.
+
+  - name: Legal Representative Documents
+    description: |
+      **Legal Representative Document** is a subentity for a [Legal Representative](#tag/Legal-Representative). Much similar to [Customer Documents](#tag/Customer-Documents), it represents a registered document, but related to a Legal Representative. Legal representative documents are important in order to check the authenticity of a Legal Representative.
+
+      The endpoints of this entity section serves only to declare that a **Legal Representative** will send the document files listed below, but it is not to send the actual files themselves. Please check the [Document Files](#tag/Document-Files) section to find out how to upload the respective document file **AFTER** registering the document existence in this entity.
+
+      For **Legal Representatives**, these are the following possible documents:
+      - `IDENTIFICATION`: **(Required)** Proof of citizenship document. This document type has the following subtypes:
+          - `CNH`: Brazil ID for Driver's license;
+          - `RG`: Brazil Citizenship ID;
+          - `PASSPORT`: Passport Book;
+          - `RNE`: Brazil Registry of Foreigners
+          - `RNM`: Brazil Immigration Registry
+      - `APPOINTMENT_DOCUMENT`: Document that proofs the invidual has been nominated a legal representative of the company if not already declared in the `CORPORATE_DOCUMENT`. Could be an **election minutes** or a **term of office** document;
+
+  - name: Legal Representative Address
+    description: |
+      **Legal Representative Address** is a subentity for a [Legal Representative](#tag/Legal-Representative), representing home address information of a legal representative.
+
+      You can only assign one address for a legal representative.
+
+  - name: Quote
+    description: |
+      Get a quote, given a `source-currency`, `target-currency` and a `target-date`. When a new quote is requested, a quote `id` is generated, which may be used to create an [Exchange Operation](#tag/Exchange) based on this quote.
+
+      If the requested currency is not available for the specified flow during quote creation, the response message will state **currency quote not available for the requested date**, along with the error code **400 Bad Request**.
+
+      List of valid **Source** to **Target** quotes:
+
+      * `BRL` **:** `USD`, `GBP`, `AUD`, `CHF`, `CAD`, `DKK`, `SEK`, `JPY`, `ZAR`, `NZD`, `EUR`, `MXN`,
+
+        `COP`, `BGN`, `CZK`, `HUF`, `PLN`, `RON`, `TRY`, `CRC`, `PAB`, `ARS`, `DOP`, `GTQ`, `CLP`,
+
+        `PEN`, `HNL`, `UYU`, `NIO`, `PYG`, `BOB`, `EGP`, `TZS`, `MAD`, `RWF`, `NGN`, `AED`, `DZD`,
+
+        `KES`, `JOD`, `GHS`, `SAR`, `XAF`, `UGX`, `CNY`, `INR`, `IDR`, `BDT`, `PHP`, `MYR`, `THB`,
+
+        `VND`, `PKR`, `SGD`, `KRW`, `HKD`, `ILS`, `QAR`, `KZT`
+
+      * `USD` **:** `BRL`, `GBP`, `AUD`, `CHF`, `CAD`, `DKK`, `SEK`, `JPY`, `ZAR`, `NZD`, `EUR`, `MXN`
+      * `GBP` **:** `BRL`
+      * `AUD` **:** `BRL`
+      * `CHF` **:** `BRL`
+      * `CAD` **:** `BRL`
+      * `DKK` **:** `BRL`
+      * `SEK` **:** `BRL`
+      * `JPY` **:** `BRL`
+      * `ZAR` **:** `USD`, `BRL`
+      * `NZD` **:** `USD`, `BRL`
+      * `EUR` **:** `USD`, `BRL`
+      * `MXN` **:** `USD`, `BRL`
+      * `ARS` **:** `USD`
+      * `CNY` **:** `USD`
+      * `CNH` **:** `USD`
+      * `PLN` **:** `USD`
+      * `CZK` **:** `USD`
+  - name: Exchange
+    description: |
+      Simulate, create and manage exchange operations, from creation to settlement.
+  - name: Counterparty
+    description: |
+      In order to carry out **foreign exchange transactions**, in addition to the registered customer's information,
+      we need to know the entity that will be the **Counterparty** to the transaction, as well as its "Foreign Account" details.
+      Use this section to record and manage this information.
+  - name: Counterparty Address
+    description: |
+      **Counterparty Address** is a subentity for a [Counterpart](#tag/Counterparty), representing address information. It can be either an address of a head office for a Counterparty of type `COMPANY`, or a home address for a Counterparty of type `INDIVIDUAL`.
+
+      Only one Counterparty Address can be registered per Counterparty.
+  - name: Exchange Documents
+    description: |
+      Represents all documents related to an [Exchange Operation](#tag/Exchange). The requirement of these documents varies by operation type, payment method, and total value of the operation.
+
+      These are all of the accepted documents for an Exchange Operation:
+      - `INVOICE`
+      - `AGREEMENT_TERMS`
+      - `LEGAL_ECONOMIC_BASE`
+      - `BILL_OF_LADING`
+      - `PROFORMA_INVOICE`
+      - `IMPORT_DOCUMENT`
+      - `EXPORT_DOCUMENT`
+  - name: Limits
+    description: |
+      All customers **approved** in the registration stage receive a **limit** to be used in foreign exchange transactions.
+      This threshold value is assigned based on the **documentation** provided and an analysis of Bexs' **compliance** systems.
+  - name: Reports
+    description: |
+      **The reports** section aims to provide information on operations through APIs and swift reports files.
+
+    # An invoice is a time-stamped commercial document that itemizes and records a transaction between a buyer and a seller for an Import/Export operation of goods or services.
+    # The **Invoice** usually specifies the terms of the deal and provides information on the available methods of payment.
+
+  - name: Banking
+    description: |
+      Allow Customer to access banking related functions e.g: withdrawal, statement.
+
+x-tagGroups:
+  - name: Security
+    tags:
+      - Authentication
+  - name: Consistency
+    tags:
+      - Idempotency
+  - name: Register
+    tags:
+      - Getting Started
+      - Customer
+      - Contact
+      - Bank Account
+      - Customer Address
+      - Customer Documents
+      - Document Files
+      - ESG Questions
+      - Shareholder Structure
+      - Legal Representative
+      - Legal Representative Address
+      - Legal Representative Documents
+      - Counterparty
+      - Counterparty Address
+  - name: Operation
+    tags:
+      - Counterparty [deprecated]
+      - Counterparty Address [deprecated]
+      - Quote
+      - Exchange
+      - Exchange Documents
+      - Limits
+      - Reports
+  - name: Notifications
+    tags:
+      - Secrets
+      - Webhook
+      - Events
+  - name: Banking
+    tags:
+      - Withdraw
+      - Statement
+      - Deposit
+      - Notification
+paths:
+  ### AUTHORIZATION
+  /v1/oauth/token:
+    $ref: './digitalfx/auth/auth.yaml#/auth'
+    servers:
+      - url: https://api-sandbox-auth.bexs.com.br
+
+  ### CUSTOMERS
+  /v1/customers:
+    $ref: './digitalfx/customer/customer.yaml#/create_customer'
+  /v1/customers/{customer-id}:
+    $ref: './digitalfx/customer/customer.yaml#/get_and_update_customer'
+  /v1/customers/{customer-id}/status:
+    $ref: './digitalfx/customer/customer.yaml#/get_status_customer'
+
+  /v1/customers/search?document_number={document_number}:
+    $ref: './digitalfx/customer/customer.yaml#/get_customer_by_document_number'
+
+  /v1/customers/{customer-id}/files:
+    $ref: './digitalfx/customer/file/file.yaml#/document_files'
+
+  /v1/customers/{customer-id}/contacts:
+    $ref: './digitalfx/contact/contact.yaml#/list_and_create_customer_contacts'
+  /v1/customers/{customer-id}/contacts/{contact-id}:
+    $ref: './digitalfx/contact/contact.yaml#/get_and_update_customer_contacts'
+
+  /v1/customers/{customer-id}/addresses:
+    $ref: './digitalfx/customer/address/address.yaml#/create_customer_address'
+  /v1/customers/{customer-id}/addresses/{address-id}:
+    $ref: './digitalfx/customer/address/address.yaml#/get_and_update_customer_addresses'
+
+  /v1/customers/{customer-id}/bank-accounts:
+    $ref: './digitalfx/customer/bank_account/bank_account.yaml#/list_and_create_customer_bank_accounts'
+  /v1/customers/{customer-id}/bank-accounts/{bank-account-id}:
+    $ref: './digitalfx/customer/bank_account/bank_account.yaml#/get_and_update_bank_accounts'
+
+  /v1/customers/{customer-id}/documents:
+    $ref: './digitalfx/customer/documents/documents.yaml#/create_and_list_customer_documents'
+  /v1/customers/{customer-id}/documents/{document-id}:
+    $ref: './digitalfx/customer/documents/documents.yaml#/get_and_update_customer_documents'
+
+  /v1/customers/{customer-id}/esg:
+    $ref: './digitalfx/customer/esg_questions/esg_question.yaml#/esg_questions'
+
+  ### SHAREHOLDERS
+  /v1/customers/{customer-id}/shareholders:
+    $ref: './digitalfx/shareholder/shareholder.yaml#/create_and_list_shareholders'
+
+  /v1/customers/{customer-id}/shareholders/{shareholder-id}:
+    $ref: './digitalfx/shareholder/shareholder.yaml#/get_update_and_delete_shareholders'
+
+  ### LEGAL REPRESENTATIVES
+  /v1/customers/{customer-id}/legal-representatives:
+    $ref: './digitalfx/legal_representative/legal_representative.yaml#/create_and_list_legal_representative'
+
+  /v1/customers/{customer-id}/legal-representatives/{legal-representative-id}:
+    $ref: './digitalfx/legal_representative/legal_representative.yaml#/get_update_and_delete_legal_representative'
+
+  /v1/customers/{customer-id}/legal-representatives/{legal-representative-id}/addresses:
+    $ref: './digitalfx/legal_representative/legal_representative.yaml#/create_legal_representative_address'
+
+  /v1/customers/{customer-id}/legal-representatives/{legal-representative-id}/addresses/{address-id}:
+    $ref: './digitalfx/legal_representative/legal_representative.yaml#/get_and_update_representative_address'
+
+  /v1/customers/{customer-id}/legal-representatives/{legal-representative-id}/documents:
+    $ref: './digitalfx/legal_representative/legal_representative.yaml#/create_and_list_legal_representative_documents'
+
+  /v1/customers/{customer-id}/legal-representatives/{legal-representative-id}/documents/{document-id}:
+    $ref: './digitalfx/legal_representative/legal_representative.yaml#/get_and_update_legal_representative_documents'
+
+  ### COUNTERPARTIES [NEW]:
+  /v1/customers/{customer-id}/counterparties:
+    $ref: './digitalfx/counterparty/counterparty.yaml#/n_create_counterparty'
+
+  /v1/customers/{customer-id}/counterparties/{counterparty-id}:
+    $ref: './digitalfx/counterparty/counterparty.yaml#/n_get_and_update_counterparty'
+
+  /v1/customers/{customer-id}/counterparties?document_number={document_number}:
+    $ref: './digitalfx/counterparty/counterparty.yaml#/n_get_counterparty_by_document_number'
+
+  ###COUNTERPARTY ADDRESS [NEW]:
+  /v1/customers/{customer-id}/counterparties/{counterparty-id}/addresses:
+    $ref: './digitalfx/counterparty/address/address.yaml#/n_create_counterparty_address'
+
+  /v1/customers/{customer-id}/counterparties/{counterparty-id}/addresses/{address-id}:
+    $ref: './digitalfx/counterparty/address/address.yaml#/n_get_and_update_counterparty_addresses'
+
+  ### FOREIGN ACCOUNT [NEW]:
+  /v1/customers/{customer-id}/counterparties/{counterparty-id}/foreign-accounts:
+    $ref: './digitalfx/counterparty/foreign_account/foreign_account.yaml#/n_create_and_list_foreign_account'
+
+  /v1/customers/{customer-id}/counterparties/{counterparty-id}/foreign-accounts/{foreign-account-id}:
+    $ref: './digitalfx/counterparty/foreign_account/foreign_account.yaml#/n_get_and_update_foreign_account'
+
+  ### CURRENCY QUOTE
+  /v1/quotes:
+    $ref: './digitalfx/quotation/quotation.yaml#/post_quotation'
+
+  /v1/quotes/custom:
+    $ref: './digitalfx/quotation/quotation.yaml#/post_custom_quotation'
+
+  /v1/operations/simulations:
+    $ref: './digitalfx/exchange/exchange.yaml#/simulate_exchange_operation'
+
+  /v1/operations:
+    $ref: './digitalfx/exchange/exchange.yaml#/create_exchange_operation'
+
+  /v1/operations/{operation-id}:
+    $ref: './digitalfx/exchange/exchange.yaml#/get_exchange_operation'
+
+
+  ### REPORTS
+
+  /v1/operations/reports?created-at-start-date=2022-10-20&created-at-end-date=2022-10-20&limit=10&page=1:
+    $ref: './digitalfx/exchange/reports/reports.yaml#/get_exchange_operations_report'
+
+  /v1/operations/reports/swift?settlement-date={settlement-date}:
+    $ref: './digitalfx/exchange/reports/reports.yaml#/create_and_download_swift_report'
+
+  ### COUNTERPARTIES [LEGACY]
+  /v1/counterparties:
+    $ref: './digitalfx/exchange/counterparty/counterparty.yaml#/create_counterparty'
+
+  /v1/counterparties/{counterparty-id}:
+    $ref: './digitalfx/exchange/counterparty/counterparty.yaml#/get_and_update_counterparty'
+
+  /v1/counterparties/search?document_number={document_number}:
+    $ref: './digitalfx/exchange/counterparty/counterparty.yaml#/get_counterparty_by_document_number'
+
+  ###COUNTERPARTY ADDRESS: [LEGACY]
+  /v1/counterparties/{counterparty-id}/addresses:
+    $ref: './digitalfx/exchange/counterparty/address/address.yaml#/create_counterparty_address'
+
+  /v1/counterparties/{counterparty-id}/addresses/{address-id}:
+    $ref: './digitalfx/exchange/counterparty/address/address.yaml#/get_and_update_counterparty_addresses'
+
+  ### FOREIGN ACCOUNT [LEGACY]
+  /v1/counterparties/{counterparty-id}/foreign-accounts:
+    $ref: './digitalfx/exchange/foreign_account/foreign_account.yaml#/create_and_list_foreign_account'
+
+  /v1/counterparties/{counterparty-id}/foreign-accounts/{foreign-account-id}:
+    $ref: './digitalfx/exchange/foreign_account/foreign_account.yaml#/get_and_update_foreign_account'
+
+  ### DOCUMENTS
+  /v1/operations/documents:
+    $ref: './digitalfx/exchange/documents/documents.yaml#/create_document_list_documents'
+
+  ### DOCUMENT FILES
+  /v1/operations/documents/{document-id}/files:
+    $ref: './digitalfx/exchange/documents/documents.yaml#/create_document_file'
+
+  ### CONTRACT FILE
+  /v1/operations/documents/contracts/{contract-number}/file:
+    $ref: './digitalfx/exchange/documents/documents.yaml#/download_contract'
+
+  ### CONTRACT FILE with operation ID
+  /v1/operations/documents/contracts/file?operation_id={operation_id}:
+    $ref: './digitalfx/exchange/documents/documents.yaml#/download_contract_by_operation_id'
+
+  ### LIMIT
+  /v1/customers/{customer-id}/limit?type={limit-type}:
+    $ref: './digitalfx/limit/limit.yaml#/limit'
+
+  /v1/customers/{customer-id}/limits:
+    $ref: './digitalfx/limit/limit.yaml#/limits'
+
+
+  ### LINK / UNLINK DOCUMENTS
+  # /v1/operations/{operation-id}/documents/{document-id}/link:
+  #   $ref: './digitalfx/exchange/documents/documents.yaml#/link_with_operation'
+
+  # /v1/operations/{operation-id}/documents/{document-id}/unlink:
+  #   $ref: './digitalfx/exchange/documents/documents.yaml#/unlink_with_operation'
+
+  ### BANKING
+  /v1/banking/accounts/{partner-id}/withdraws:
+    $ref: './account/banking.yml#/paths/~1v1~1banking~1accounts~1{partner-id}~1withdraws'
+  /v1/banking/accounts/{partner-id}/withdraws/validate:
+    $ref: './account/banking.yml#/paths/~1v1~1banking~1accounts~1{partner-id}~1withdraws~1validate'
+  /v1/banking/accounts/{partner-id}/withdraws/{withdraw-id}:
+    $ref: './account/banking.yml#/paths/~1v1~1banking~1accounts~1{partner-id}~1withdraws~1{withdraw-id}'
+  /v1/banking/accounts/{partner-id}/statements:
+    $ref: './account/banking.yml#/paths/~1v1~1banking~1accounts~1{partner-id}~1statements'
+  /v1/banking/accounts/{partner-id}/qrcodes:
+    $ref: './account/pix-qrcode.yml#/paths/~1v1~1banking~1accounts~1{partner-id}~1qrcodes'
+  /v1/banking/accounts/{partner-id}/qrcodes?externalid={external-id}:
+    $ref: './account/pix-qrcode.yml#/paths/~1v1~1banking~1accounts~1{partner-id}~1qrcodes?externalid={external-id}'
+  /v1/banking/accounts/{partner-id}/sandbox/deposits:
+    $ref: './account/banking.yml#/paths/~1v1~1banking~1accounts~1{partner-id}~1sandbox~1deposits'
+
+  ### NOTIFICATIONS
+  /v1/notifications/webhooks/secrets:
+    $ref: ./digitalfx/notifications/notifications.yaml#/secrets
+  /v1/notifications/webhooks:
+    $ref: ./digitalfx/notifications/notifications.yaml#/webhooks
+  /v1/notifications/webhooks/{event}:
+    $ref: ./digitalfx/notifications/notifications.yaml#/webhook
+  /v1/notifications/webhooks/{event}/{command}:
+    $ref: ./digitalfx/notifications/notifications.yaml#/change-webhook
+
+# Due to the fact that the x-webhooks tag is unique and can only be used once in the project structure
+# all webhook declarations have been centered in the file: /specs/webhooks.yml
+x-webhooks:
+  $ref: './webhooks.yml#/x-webhooks'

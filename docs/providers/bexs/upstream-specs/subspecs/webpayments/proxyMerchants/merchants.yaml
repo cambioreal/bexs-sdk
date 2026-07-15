@@ -1,0 +1,1387 @@
+definitions:
+  foreign_account_id:
+    type: string
+    format: uuid
+    name: foreign_account_id
+    example: 'a56f37ea-f907-4714-af84-11545f264536'
+  merchant_id:
+    name: merchant_id
+    type: string
+    format: uuid
+    example: 'z25f37ev-d901-3714-bf84-22584g361891'
+  domain.AddressRequest:
+    properties:
+      type:
+        type: string
+        enum:
+          - RESIDENTIAL
+          - BUSINESS
+          - LEGAL
+        description: 'Type of address'
+        example: 'BUSINESS'
+      street:
+        type: string
+        description: Street name
+        example: York Street
+        maxLength: 200
+      number:
+        type: string
+        description: Address number
+        example: '70'
+        maxLength: 50
+      complement:
+        type: string
+        description: Address complement, if applicable
+        example: Suite 1600
+        maxLength: 150
+      neighborhood:
+        type: string
+        description: Neighborhood name
+        example: Ontario
+        maxLength: 100
+      city:
+        type: string
+        description: City name
+        example: Toronto
+        maxLength: 100
+      state_code:
+        type: string
+        description: State or subdivision name. Use [ISO 3166-2](https://www.iso.org/iso-3166-country-codes.html) two-letter code (alpha-2).
+        example: 'ON'
+        minLength: 2
+        maxLength: 2
+      zip_code:
+        type: string
+        description: Postal code
+        example: M5H 1J8
+        maxLength: 10
+      country_code:
+        type: string
+        description: Country code. Use the [ISO 3166-1](https://www.iso.org/iso-3166-country-codes.html) three-letter code (alpha-3)
+        example: CAN
+        minLength: 3
+        maxLength: 3
+    required:
+      - type
+      - street
+      - number
+      - city
+      - state_code
+      - zip_code
+      - country_code
+    type: object
+  domain.AddressResponse:
+    properties:
+      type:
+        type: string
+        enum:
+          - RESIDENTIAL
+          - BUSINESS
+          - LEGAL
+        description: 'Type of address'
+        example: 'BUSINESS'
+      street:
+        type: string
+        description: Street name
+        example: York Street
+        maxLength: 200
+      number:
+        type: string
+        description: Address number
+        example: '70'
+        maxLength: 50
+      complement:
+        type: string
+        description: Address complement, if applicable
+        example: Suite 1600
+        maxLength: 150
+      neighborhood:
+        type: string
+        description: Neighborhood name
+        example: Ontario
+        maxLength: 100
+      city:
+        type: string
+        description: City name
+        example: Toronto
+        maxLength: 100
+      state_code:
+        type: string
+        description: State or subdivision name. Use [ISO 3166-2](https://www.iso.org/iso-3166-country-codes.html) two-letter code (alpha-2).
+        example: 'ON'
+        minLength: 2
+        maxLength: 2
+      zip_code:
+        type: string
+        description: Postal code
+        example: M5H 1J8
+        maxLength: 10
+      country_code:
+        type: string
+        description: Country code. Use the [ISO 3166-1](https://www.iso.org/iso-3166-country-codes.html) three-letter code (alpha-3)
+        example: CAN
+        minLength: 3
+        maxLength: 3
+      address_id:
+        type: string
+        format: uuid
+        description: Address identification
+        example: '4f81c785-ee6e-500d-b240-5fac45009777'
+    type: object
+  domain.BoardOfDirectors:
+    properties:
+      address:
+        $ref: '#/definitions/domain.AddressRequest'
+        type: object
+      date_of_birth:
+        type: string
+      director_id:
+        type: string
+      full_name:
+        type: string
+      job_title:
+        type: string
+      nationality:
+        type: string
+      passport_number:
+        type: string
+    required:
+      - address
+      - date_of_birth
+      - full_name
+      - job_title
+      - nationality
+      - passport_number
+    type: object
+  domain.Company:
+    properties:
+      business_name:
+        type: string
+      company_registration_number:
+        type: string
+      date_of_incorporation:
+        type: string
+        pattern: 'YYYY-MM-DD'
+        example: '2020-10-01'
+      place_of_incorporation:
+        type: string
+      tax_payer_identification:
+        type: string
+      website:
+        type: string
+      goods_delivery:
+        $ref: '#/definitions/domain.GoodsDelivery'
+        type: object
+      #      legal_name:
+      #        type: string
+      #      license:
+      #        type: string
+      share_capital:
+        $ref: '#/definitions/domain.ShareCapital'
+        type: object
+    type: object
+  domain.CompanyResponse:
+    properties:
+      business_name:
+        type: string
+      company_registration_number:
+        type: string
+      date_of_incorporation:
+        example: '2020-10-01'
+        type: string
+      goods_delivery:
+        $ref: '#/definitions/domain.GoodsDeliveryResponse'
+        type: object
+      legal_name:
+        type: string
+      license:
+        type: string
+      place_of_incorporation:
+        type: string
+      share_capital:
+        $ref: '#/definitions/domain.ShareCapitalResponse'
+        type: object
+      tax_payer_identification:
+        type: string
+      website:
+        type: string
+    type: object
+  domain.Error:
+    properties:
+      error:
+        type: string
+    type: object
+  domain.ErrorAddress:
+    properties:
+      code:
+        type: integer
+      message:
+        type: string
+    type: object
+  domain.Message:
+    properties:
+      message:
+        type: string
+    type: object
+  domain.GoodsDelivery:
+    properties:
+      average_delivery_days:
+        type: integer
+      insurance:
+        type: boolean
+      shipping_methods:
+        type: string
+      tracking_code_available:
+        type: boolean
+    type: object
+  domain.GoodsDeliveryResponse:
+    properties:
+      average_delivery_days:
+        type: integer
+      insurance:
+        type: boolean
+      shipping_methods:
+        type: string
+      tracking_code_available:
+        type: boolean
+    type: object
+  IntermediaryBank:
+    properties:
+      bank_name:
+        type: string
+        description: |
+          Intermediary bank name.
+      bank_country:
+        type: string
+        example: BR
+        maxLength: 2
+        minLength: 2
+        description: |
+          Intermediary bank country. Use the [ISO 3166-1](https://www.iso.org/obp/ui/#search) two-letter code (Alpha-2).
+      bank_transfer_platform_code:
+        type: string
+        description: |
+          Intermediary bank SWIFT/BIC code. Use 8 or 11 characters.
+
+          In order to avoid rejections due to incorrect codes, check it in [BIC Search](https://www.swiftref.com/en/bicsearch).
+      account_number:
+        type: string
+        description: |
+          Beneficiary’s bank account number hold in the intermediary bank, if applicable.
+
+          **Attention:** it is not the beneficiary account number.
+    type: object
+    required:
+      - bank_name
+      - bank_country
+      - bank_transfer_platform_code
+  IntermediaryBankResponse:
+    properties:
+      account_number:
+        type: string
+        description: |
+          Beneficiary’s bank account number hold in the intermediary bank, if applicable.
+
+          **Attention:** it is not the beneficiary account number.
+      bank_country:
+        type: string
+        description: |
+          Intermediary bank country. Two-letter code (Alpha-2) [ISO 3166-1](https://www.iso.org/obp/ui/#search).
+      bank_name:
+        type: string
+        description: |
+          Intermediary bank name.
+      bank_transfer_platform_code:
+        type: string
+        description: |
+          Intermediary bank SWIFT/BIC code.
+    type: object
+  domain.MerchantAccount:
+    properties:
+      account_number:
+        type: string
+        description: |
+          Beneficiary account number
+      beneficiary_address:
+        type: string
+        description: |
+          Beneficiary address
+      beneficiary_city:
+        type: string
+        description: |
+          Beneficiary city
+      beneficiary_country:
+        type: string
+        description: |
+          Beneficiary country
+      bank_name:
+        type: string
+        description: |
+          Beneficiary bank_name
+
+          Provide the institution name
+      bank_transfer_platform_code:
+        type: string
+        description: |
+          SWIFT code or  BIC is an established international standard. It provides an identifier for institutions within the financial services industry
+
+          Is posible to find the code on the SWIFT site (swift.com). To perform searches on the platform you will need bank name, city and country where the money will be sent.
+      #      bank_transfer_platform_type:
+      #        enum:
+      #          - SWIFT
+      #          - BIC
+      #          - IBAN
+      #        default: SWIFT
+      #        type: string
+      beneficiary:
+        type: string
+        description: |
+          Provide the full name of the beneficiary
+      created_at:
+        type: string
+        readOnly: true
+      currency_code:
+        $ref: '../commons/components.yaml#/components/schemas/CurrencyCode'
+        readOnly: true
+      intermediary_bank:
+        $ref: '#/definitions/IntermediaryBank'
+        type: object
+      updated_at:
+        type: string
+        readOnly: true
+      foreign_account_id:
+        $ref: '#/definitions/foreign_account_id'
+        readOnly: true
+      additional_information:
+        type: string
+    required:
+      - account_number
+      - beneficiary_address
+      - beneficiary_city
+      - beneficiary_country
+      - bank_name
+      - bank_transfer_platform_code
+      - beneficiary
+      - currency_code
+    type: object
+  domain.MerchantAccountGetResponse:
+    properties:
+      account_number:
+        type: string
+        description: |
+          Beneficiary account number or IBAN hold in the informed bank.
+      beneficiary_address:
+        type: string
+        description: |
+          Beneficiary’s **bank** address.
+      beneficiary_city:
+        type: string
+        description: |
+          Beneficiary’s **bank** city name.
+      beneficiary_country:
+        type: string
+        description: |
+          Beneficiary’s **bank** country. Two-letter code (Alpha-2) [ISO 3166-1](https://www.iso.org/obp/ui/#search).
+      bank_name:
+        type: string
+        description: |
+          Beneficiary’s bank name.
+      bank_transfer_platform_code:
+        type: string
+        description: |
+          Beneficiary’s bank SWIFT/BIC code.
+      beneficiary:
+        type: string
+        description: |
+          Beneficiary full name accordingly to the bank account registration.
+      created_at:
+        type: string
+        readOnly: true
+      currency_code:
+        type: string
+        readOnly: true
+        description: |
+          Foreign currency code of the bank account informed.
+      intermediary_bank:
+        $ref: '#/definitions/IntermediaryBankResponse'
+        type: object
+      updated_at:
+        type: string
+        readOnly: true
+      foreign_account_id:
+        $ref: '#/definitions/foreign_account_id'
+        readOnly: true
+      additional_information:
+        type: string
+        description: Additional information to be used in the payment.
+    type: object
+  domain.role_type:
+    type: string
+    name: role_type
+    description: |
+      Type of beneficiary receiving the payment abroad: 
+      - Use MERCHANT to register the end receiver of the remittance (the seller itself); 
+      - Use PSP to register any type of intermediaries processing the payment between the sender and the merchant (PSP (Payment Service Provider), Gateway etc).
+    enum:
+      - MERCHANT
+      - PSP
+  domain.psp_id:
+    type: string
+    format: uuid
+    name: psp_id
+    description: |
+      If there is an intermediate receiver processing the payment between the sender and the merchant, register it using [role_type = PSP] and inform here the ID returned.<br />
+      <br />**Attention:** In this case, the merchant will be reported to Brazilian Central Bank but the remittance will be made using the PSP information (name, address and foreign account).
+  domain.MerchantPostRequest:
+    properties:
+      #      callback_url:
+      #        type: string
+      legal_name:
+        description: Inform the legal company name (without abbreviations).
+        type: string
+        maximum: 200
+      document_number:
+        description: Inform the company registration number (must be unique).
+        type: string
+        maximum: 50
+      product_category:
+        type: string
+        description: |
+          Type of transaction related to the merchant's business. Must be one of these options:
+           - `GOODS`: Physical or virtual product purchase
+           - `SERVICES`: Services delivery like music streaming, video games etc
+           - `DIGITAL_ASSETS`: Trading of virtual assets such as crypto
+           - `GAMBLING_BETTING`: Payments related to gambling and betting
+           <br />
+          <br />When filled, it will be automatically applied to all merchant's transactions unless the field product_category is informed in the payment registration itself (in this case, the payment’s category overlaps the merchant’s category).
+        enum:
+          - GOODS
+          - SERVICES
+          - DIGITAL_ASSETS
+          - GAMBLING_BETTING
+      company:
+        $ref: '#/definitions/domain.Company'
+        type: object
+      role_type:
+        $ref: '#/definitions/domain.role_type'
+        type: string
+      psp_id:
+        $ref: '#/definitions/domain.psp_id'
+        type: string
+    required:
+      - legal_name
+      - document_number
+    type: object
+  domain.MerchantPutRequest:
+    properties:
+      #      callback_url:
+      #        type: string
+      legal_name:
+        description: Inform the legal company name (without abbreviations).
+        type: string
+        maximum: 200
+      document_number:
+        description: Inform the company registration number (must be unique).
+        type: string
+        maximum: 50
+      product_category:
+        type: string
+        description: |
+          Type of transaction related to the merchant's business. Must be one of these options:
+           - `GOODS`: Physical or virtual product purchase
+           - `SERVICES`: Services delivery like music streaming, video games etc
+           - `DIGITAL_ASSETS`: Trading of virtual assets such as crypto
+           - `GAMBLING_BETTING`: Payments related to gambling and betting
+           <br />
+          <br />When filled, it will be automatically applied to all merchant's transactions unless the field product_category is informed in the payment registration itself (in this case, the payment’s category overlaps the merchant’s category).
+        enum:
+          - GOODS
+          - SERVICES
+          - DIGITAL_ASSETS
+          - GAMBLING_BETTING
+      company:
+        $ref: '#/definitions/domain.Company'
+        type: object
+      role_type:
+        $ref: '#/definitions/domain.role_type'
+        type: string
+      psp_id:
+        $ref: '#/definitions/domain.psp_id'
+        type: string
+    required:
+      - legal_name
+      - document_number
+    type: object
+  domain.MerchantResponse:
+    properties:
+      merchant_id:
+        $ref: '#/definitions/merchant_id'
+    type: object
+  domain.MerchantGetResponse:
+    properties:
+      company:
+        $ref: '#/definitions/domain.CompanyResponse'
+        type: object
+      document_number:
+        type: string
+      product_category:
+        type: string
+      merchant_id:
+        $ref: '#/definitions/merchant_id'
+      address:
+        $ref: '#/definitions/domain.AddressResponse'
+        type: object
+      role_type:
+        $ref: '#/definitions/domain.role_type'
+        type: string
+      psp_id:
+        $ref: '#/definitions/domain.psp_id'
+        type: string
+      status:
+        type: string
+        example: 'APPROVED'
+    type: object
+  domain.ForeignAccountResponse:
+    properties:
+      foreign_account_id:
+        $ref: '#/definitions/foreign_account_id'
+        readOnly: true
+    type: object
+  domain.ShareCapital:
+    properties:
+      amount:
+        type: number
+      currency:
+        type: string
+    type: object
+  domain.ShareCapitalResponse:
+    properties:
+      amount:
+        type: number
+      currency:
+        type: string
+    type: object
+  domain.ShareHolders:
+    properties:
+      address:
+        $ref: '#/definitions/domain.AddressRequest'
+        type: object
+      date_of_birth:
+        type: string
+      full_name:
+        type: string
+      nationality:
+        type: string
+      ownership_percent:
+        type: number
+      passport_number:
+        type: string
+      shareholder_id:
+        type: string
+    required:
+      - address
+      - date_of_birth
+      - full_name
+      - nationality
+      - ownership_percent
+      - passport_number
+    type: object
+  domain.ForeignAccount:
+    properties:
+      beneficiary:
+        type: string
+        maxLength: 70
+        description: |
+          Beneficiary full name accordingly to the bank account registration.
+      bank_name:
+        type: string
+        description: |
+          Beneficiary’s bank name.
+      beneficiary_address:
+        maxLength: 67
+        type: string
+        description: |
+          Beneficiary’s **bank** address.
+      beneficiary_city:
+        type: string
+        description: |
+          Beneficiary’s **bank** city name.
+      beneficiary_country:
+        type: string
+        example: BR
+        maxLength: 2
+        minLength: 2
+        description: |
+          Beneficiary’s **bank** country. Use the [ISO 3166-1](https://www.iso.org/obp/ui/#search) two-letter code (Alpha-2).
+      bank_transfer_platform_code:
+        type: string
+        description: |
+          Beneficiary’s bank SWIFT/BIC code. Use 8 or 11 characters.
+
+          In order to avoid rejections due to incorrect codes, check it in [BIC Search](https://www.swiftref.com/en/bicsearch).
+      account_number:
+        type: string
+        description: |
+          Beneficiary account number or IBAN hold in the informed bank.
+      currency_code:
+        type: string
+        default: USD
+        example: USD
+        maxLength: 3
+        minLength: 3
+        description: |
+          Foreign currency code of the bank account informed.
+
+          In case of multi-currency accounts, use the main currency.
+      additional_information:
+        type: string
+        description: |
+          Additional information to be used in the payment, if applicable. 
+
+          Use any alphanumeric pattern without special characters (such as ‘@', '#', '$', '%’ etc).
+
+          Examples: BSB code, CUIT,  routing number etc.
+      intermediary_bank:
+        $ref: '#/definitions/IntermediaryBank'
+        type: object
+    required:
+      - account_number
+      - beneficiary_country
+      - bank_name
+      - beneficiary
+      - beneficiary_address
+      - beneficiary_city
+      - bank_transfer_platform_code
+      - currency_code
+    type: object
+address:
+  get:
+    consumes:
+      - application/json
+    description: Fetch address information using it identification code (address_ID).
+    parameters:
+      - description: Address identification
+        in: path
+        name: address_id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    produces:
+      - application/json
+    responses:
+      '200':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.AddressResponse'
+      '400':
+        description: Bad Request
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.ErrorAddress'
+      '404':
+        description: Not Found
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.ErrorAddress'
+      '500':
+        description: Internal Server Error
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.ErrorAddress'
+    summary: Get an Address
+    tags:
+      - Address
+  put:
+    consumes:
+      - application/json
+    description:
+      Update address information using it identification code (address_ID).<br />
+      Please note that changes in some information may inccur in new Compliance analysis and transactions rejection in the proccess.
+      Contact our team to help you with the proccess if necessary.
+    parameters:
+      - description: Address identification
+        in: path
+        name: address_id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      content:
+        'application/json':
+          schema:
+            $ref: '#/definitions/domain.AddressRequest'
+    produces:
+      - application/json
+    responses:
+      '200':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.AddressResponse'
+      '400':
+        description: Bad Request
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.ErrorAddress'
+      '404':
+        description: Not Found
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.ErrorAddress'
+      '500':
+        description: Internal Server Error
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.ErrorAddress'
+    summary: Update an Address
+    tags:
+      - Address
+send_address:
+  post:
+    consumes:
+      - application/json
+    description: Create an address registration.
+    parameters:
+      - description: Merchant identification
+        in: path
+        name: merchant_id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      content:
+        'application/json':
+          schema:
+            $ref: '#/definitions/domain.AddressRequest'
+    produces:
+      - application/json
+    responses:
+      '201':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.AddressResponse'
+      '400':
+        description: Bad Request
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.ErrorAddress'
+      '404':
+        description: Not Found
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.ErrorAddress'
+      '409':
+        description: Conflict
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.ErrorAddress'
+      '500':
+        description: Internal Server Error
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.ErrorAddress'
+    summary: Register an Address
+    tags:
+      - Address
+board_of_directors:
+  get:
+    consumes:
+      - application/json
+    description: Fetch Director by identification
+    parameters:
+      - description: Director identification
+        in: path
+        name: director-id
+        required: true
+        type: string
+    produces:
+      - application/json
+    responses:
+      '200':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.BoardOfDirectors'
+      '400':
+        description: Bad Request
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '404':
+        description: Not Found
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '500':
+        description: Internal Server Error
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+    security:
+      - BearerToken: []
+    summary: Get a Director
+    tags:
+      - BoardOfDirectors
+  put:
+    consumes:
+      - application/json
+    description: Update Director by identification
+    parameters:
+      - description: Director identification
+        in: path
+        name: director-id
+        required: true
+        type: string
+    requestBody:
+      content:
+        'application/json':
+          schema:
+            $ref: '#/definitions/domain.BoardOfDirectors'
+    produces:
+      - application/json
+    responses:
+      '200':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.BoardOfDirectors'
+      '400':
+        description: Bad Request
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '404':
+        description: Not Found
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '500':
+        description: Internal Server Error
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+    security:
+      - BearerToken: []
+    summary: Update a Director
+    tags:
+      - BoardOfDirectors
+send_board_of_directors:
+  post:
+    consumes:
+      - application/json
+    description: Send BoardOfDirectors by merchant identification
+    parameters:
+      - description: MerchantID identification
+        in: path
+        name: merchant_id
+        required: true
+        type: string
+    requestBody:
+      content:
+        'application/json':
+          schema:
+            $ref: '#/definitions/domain.BoardOfDirectors'
+    produces:
+      - application/json
+    responses:
+      '201':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.BoardOfDirectors'
+      '400':
+        description: Bad Request
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '404':
+        description: Not Found
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '409':
+        description: Conflict
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '500':
+        description: Internal Server Error
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+    security:
+      - BearerToken: []
+    summary: Send an BoardOfDirectors
+    tags:
+      - BoardOfDirectors
+create_foreign_accounts:
+  post:
+    consumes:
+      - application/json
+    description: Create a foreign account registration.
+    parameters:
+      - description: Merchant identification
+        in: path
+        name: merchant_id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      content:
+        'application/json':
+          schema:
+            $ref: '#/definitions/domain.ForeignAccount'
+    produces:
+      - application/json
+    responses:
+      '201':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.ForeignAccountResponse'
+      '400':
+        description: Bad Request
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '404':
+        description: Not Found
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '409':
+        description: Conflict
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '500':
+        description: Internal Server Error
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+    summary: Register a Foreign Account
+    tags:
+      - Foreign Accounts
+foreign_accounts:
+  get:
+    consumes:
+      - application/json
+    description: Fetch foreign account information using it identification code (foreign_account_ID).
+    parameters:
+      - description: Foreign Account identification.
+        in: path
+        name: foreign_account_id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    produces:
+      - application/json
+    responses:
+      '200':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.MerchantAccountGetResponse'
+      '400':
+        description: Bad Request
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '404':
+        description: Not Found
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '500':
+        description: Internal Server Error
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+    summary: Get a Foreign Account
+    tags:
+      - Foreign Accounts
+  put:
+    consumes:
+      - application/json
+    description: |
+      Update foreign account information using it identification code (foreign_account_ID).
+
+      Please note that changes in some information may inccur in new Compliance analysis and transactions rejection in the proccess. 
+      Contact our team to help you with the proccess, if necessary.
+    parameters:
+      - description: Foreign Account identification.
+        in: path
+        name: foreign_account_id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      content:
+        'application/json':
+          schema:
+            $ref: '#/definitions/domain.ForeignAccount'
+    produces:
+      - application/json
+    responses:
+      '200':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.MerchantAccountGetResponse'
+      '400':
+        description: Bad Request
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '404':
+        description: Not Found
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '500':
+        description: Internal Server Error
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+    summary: Update a Foreign Account
+    tags:
+      - Foreign Accounts
+merchants:
+  post:
+    consumes:
+      - application/json
+    description: Create a merchant registration.
+    requestBody:
+      content:
+        'application/json':
+          schema:
+            $ref: '#/definitions/domain.MerchantPostRequest'
+    produces:
+      - application/json
+    responses:
+      '201':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.MerchantResponse'
+      '400':
+        description: Bad Request
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Message'
+      '404':
+        description: Not Found
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Message'
+      '409':
+        description: Conflict - Usually raised by attempting to create a merchant using a document number that already belongs to an existing merchant
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '500':
+        description: Internal Server Error
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+    summary: Register a Merchant
+    tags:
+      - Merchants
+merchants_withId:
+  get:
+    consumes:
+      - application/json
+    description: Fetch merchant information using it identification code (merchant_ID).
+    parameters:
+      - description: |
+          Merchant identification
+        name: merchant_id
+        example: 'z25f37ev-d901-3714-bf84-22584g361891'
+        required: true
+        schema:
+          type: string
+          format: uuid
+        in: path
+    produces:
+      - application/json
+    responses:
+      '200':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.MerchantGetResponse'
+      '400':
+        description: Bad Request
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Message'
+      '404':
+        description: Not Found
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Message'
+      '500':
+        description: Internal Server Error
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+    summary: Get a Merchant
+    tags:
+      - Merchants
+  put:
+    consumes:
+      - application/json
+    description: |
+      Update merchant information using it identification code (merchant_ID).
+      <br />Please note that changes in some information may inccur in new Compliance analysis and transactions rejection in the proccess. Contact our team to help you with the proccess if necessary.
+    parameters:
+      - description: |
+          Merchant identification
+        name: merchant_id
+        example: 'z25f37ev-d901-3714-bf84-22584g361891'
+        required: true
+        schema:
+          type: string
+          format: uuid
+        in: path
+    requestBody:
+      content:
+        'application/json':
+          schema:
+            $ref: '#/definitions/domain.MerchantPutRequest'
+    produces:
+      - application/json
+    responses:
+      '200':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.MerchantGetResponse'
+      '400':
+        description: Bad Request
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Message'
+      '404':
+        description: Not Found
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Message'
+      '500':
+        description: Internal Server Error
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+    summary: Update a Merchant
+    tags:
+      - Merchants
+send_shareholders:
+  post:
+    consumes:
+      - application/json
+    description: Send ShareHolders by merchant identification
+    parameters:
+      - description: MerchantID identification
+        in: path
+        name: merchant_id
+        required: true
+        type: string
+    requestBody:
+      content:
+        'application/json':
+          schema:
+            $ref: '#/definitions/domain.ShareHolders'
+    produces:
+      - application/json
+    responses:
+      '201':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.ShareHolders'
+      '400':
+        description: Bad Request
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '404':
+        description: Not Found
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '409':
+        description: Conflict
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '500':
+        description: Internal Server Error
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+    security:
+      - BearerToken: []
+    summary: Send an ShareHolder
+    tags:
+      - ShareHolders
+shareholders:
+  get:
+    consumes:
+      - application/json
+    description: Fetch ShareHolder by identification
+    parameters:
+      - description: ShareHolder identification
+        in: path
+        name: shareholder-id
+        required: true
+        type: string
+    produces:
+      - application/json
+    responses:
+      '200':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.ShareHolders'
+      '400':
+        description: Bad Request
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '404':
+        description: Not Found
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '500':
+        description: Internal Server Error
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+    security:
+      - BearerToken: []
+    summary: Get a ShareHolder
+    tags:
+      - ShareHolders
+  put:
+    consumes:
+      - application/json
+    description: Update ShareHolder by identification
+    parameters:
+      - description: ShareHolder identification
+        in: path
+        name: shareholder-id
+        required: true
+        type: string
+    requestBody:
+      content:
+        'application/json':
+          schema:
+            $ref: '#/definitions/domain.ShareHolders'
+    produces:
+      - application/json
+    responses:
+      '200':
+        description: OK
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.ShareHolders'
+      '400':
+        description: Bad Request
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '404':
+        description: Not Found
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+      '500':
+        description: Internal Server Error
+        content:
+          'application/json':
+            schema:
+              $ref: '#/definitions/domain.Error'
+    security:
+      - BearerToken: []
+    summary: Update a ShareHolder
+    tags:
+      - ShareHolders
+securityDefinitions/schemas:
+  BearerToken:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: '2.0'

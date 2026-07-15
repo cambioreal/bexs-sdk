@@ -1,0 +1,683 @@
+openapi: '3.0.2'
+info:
+  title: WebPayments
+  contact:
+    name: API Support
+    email: integration@bexsbanco.com.br
+  description: |
+    This API's goal is to allow enablers and or intermediaries to register payments and subsequently submit those to their partners and/or customers.
+    To accomplish that, these payments are accumulated in our systems, to eventually become exchange operations.
+
+  version: '1.0'
+schemes:
+  - https
+servers:
+  - url: https://api-sandbox-digitalfx.bexs.com.br
+tags:
+  - name: Introduction
+    description: |
+      **About the product**
+
+      The solution allows PSPs and marketplaces to do payments remittance to outside of the country, in any currency. In order to accomplish that, 
+      these payments are registered in our systems as future exchange, to be be settled when the remittance day arrives. The transactions are protected 
+      against market price variations as registered and the future settlements are done according to the partners preferences.
+
+  - name: Contact
+    description: |
+      **Contact**
+
+      Get in touch with our commercial team by email or telephone in order to start using our APIs.
+
+      📞 +55 011 2712-5300
+
+      📧 contact@br.ebury.com
+
+      Opening hours: Mon-Fri 9h to 18h (except holidays)
+
+  - name: How to use
+    description: |
+      The integration flow is composed by the following steps:
+
+      **1. Merchant creation:** create a merchant through the endpoint [POST /v1/webpayments/merchants] and get the merchant_id in its response;
+
+      - It is mandatory to register merchants through our API. When submitted, this record goes through our compliance analysis, and when 
+      approved, that merchant will be ready to be associated with future payments.
+
+      - The informed merchant must be previously analysed and approved by our Compliance Team.
+
+      **2. Relate address:** create an address and relate it with the correspondent merchant_id generated in step 1, through the endpoint 
+      [POST /v1/webpayments/address/{merchant_id}];
+
+      **3. Relate foreign account:** create a foreign account which will be used for sending the payment and relate it with the merchant_id 
+      generated in step 1, through the endpoint [POST /v1/webpayments/foreign-accounts/{merchant_id}];
+
+      **4. Payment creation:** create payments to your registered merchant through the endpoint [POST /v1/webpayments/payments] informing the merchant_id;
+
+      - If the price is fixed in brazilian reais, it is mandatory to inform only the national amount and foreign currency, being foreign amount
+        and exchange rate automatically filled with current exchange;
+
+      - If the price is fixed in foreign amount, it is mandatory to inform all the amount fields and the exchange rate applied to your customer 
+      purchase;
+
+      - The national and foreign currency amounts will be consisted using the informed exchange rate which can be verified thought the endpoint 
+      [GET /v1/webpayments/quotes];
+
+      - It is possible to query an operation status through the endpoint: [GET /v1/webpayments/payments/{payment_id}].
+
+      **5. Moving payments to the bucket:** Inside buckets, operations can be moved or settled.
+
+      - To move operations to a bucket, use the following endpoint: [POST /v1/webpayments/buckets/{bucket_name}/move], informing the filter fields. Important: 
+      the payment must be in the AVAILABLE_SETTLEMENT status in order to be moved;
+
+      - It is possible to fetch the total amount of operations currently in a bucket through the endpoint: [GET /v1/webpayments/buckets/{bucket_name}/sum];
+
+      - It is also possible to verify all the payments currently in a bucket through the endpoint: [GET /v1/webpayments/buckets/{bucket_name}].
+
+      **6. Submitting bucket to settlement:** Once the payments are grouped in a bucket, choose the best date to do the checkout of the payments 
+      through the endpoint [POST /v1/webpayments/buckets/{bucket_name}/checkout].
+
+      _Note: The process described above may vary, depending on the partner's chosen business model._
+
+  - name: Obtaining your credentials
+    description: |
+      In case of being interested in using our APIs, get in touch with the commercial team to be registered as a partner. They will collect some 
+      information about your business model and the onboarding process starts. As soon as the process is taking place, you will be informed about 
+      the test environment credentials so the discovery and integration begin. 
+
+      There are two different environments to access our APIs:
+
+      **Sandbox:** environment used during the integration phase for testing and development. It is a copy of the production environment, allowing the 
+      partner to simulate operations and validate business rules. 
+
+      **Production:** environment where the product is put into operation for their intended uses by end users. The access to this environment will be 
+      released by Ebury Bank team once the entire homologation flow in sandbox is concluded.
+
+  - name: Address
+    description: |
+      The merchant’s address information is mandatory and must be registered during the merchant onboarding. After registering the merchant itself, use the ID returned to link the address.
+  - name: Authentication
+    description: |
+      Request a token using the provided **client_id** and **client_secret**:
+
+      **Authentication:** 
+      <table>
+        <tr>
+          <td>Sandbox</td>
+          <td><span style="color: var(--primary)">https://api-sandbox-auth.bexs.com.br/v1/oauth/token</span></td>
+        </tr>
+        <tr>
+          <td>Production</td>
+          <td><span style="color: var(--primary)">https://api-production-auth.bexs.com.br/v1/oauth/token</span></td>
+        </tr>
+      <table>
+
+      Add the authentication token to the header of every request following the Oauth 2.0 Bearer token specification (RFC 6750).
+  - name: Bank Account
+    description: |
+      **Bank Account** is a subentity that represents bank account data for a given Customer. A Customer can have multiple Bank Accounts registered.
+
+      **Note:** Only *Brazilian* Bank accounts can be registered.
+
+  - name: Buckets
+    description: |
+      The bucket proccess means to organize transactions to settlement (in other words, to effect the payment of the FX operation(s)).<br />
+      <br />**Attention:** All requests to bucket API are executed in asynchronous mode, which means it is necessary to wait for the notification to know if the request was accepted or rejected.
+
+      ## Move Process
+
+      The Move process is used to group different kind of operations in a same bucket to be processed as a unique exchange operation. The customer has the flexibility to choose the
+      operations of theirs merchant the want to put in the same bucket. As the bucket represent a financial transfer contract in the end, the balance of this bucket must be in
+      the black (positive), otherwise the bucket can't be settled. So, before checkout the bucket, you may execute the bucket balance (we will see this process in the next topic).
+      The diagram below explain the Move process:
+      <br/><br/>
+      <img  src="/assets/images/Move-Process-Diagram.svg">
+      <br/>
+
+      Explaining the steps:
+
+      1. **Move Request Submitted**: Client send a Post Rest call to the [/v1/webpayments/buckets/{bucket_name}/move] endpoint sending json payload about the desired bucket_name.
+      The list of the operation-ids (payments or cancellations) must be informed in the payload, and that list should be limited to 1000 records at a time. Notice that the move operation only work if you send payments or cancellations (not the both) in
+      the payload body. If you want to include payments and cancellations in the same bucket, you need to send 2 different move operation: one for payments, other for the cancellations.
+
+      2. **Invalid Move Request**: WebPayments returns synchronous informing check errors in the request. If the error is of 5XX class, some internal errors occur and the Ebury Bank Support team must be contacted.
+      Otherwise, check the payload structure and values to verify if the payload is correct (include the payment_id/cancellation_id informed in the json body), and if the operations sent are in
+      the correct status/stage.
+
+      3. **Valid Move Request**: Move operation request operation was considered valid. But you need to wait for MOVE_ACCEPTED event to confirm that bucket was created.
+
+      4. **Move Approved**: This step occur asynchonously after step 3, and indicates that the move operation was accepted and the bucket created for the operations.
+      Notice in this case, WebPaymentns will callback only once with an eventType "MOVE_ACCEPTED" confirming all the operations moved to the bucket to each 1000 records sent. Example: <br/>
+
+      **Payment Event Move Example**
+      ```json
+        {
+          "eventType" : "MOVE_ACCEPTED",
+          "eventTime" : "2022-02-09T14:52:59.334291835Z",
+          "bucketName" : "XXXXX",
+          "approved": {
+            "paymentIds": [ "P1", "P2" ]
+          }
+        }
+      ```
+
+      Note that as the move operations can be done oly with payments or cancellations (not both), the approvals events will return only with payments or cancellations (not both).
+
+      5. **Move Partial Approved**: This is a special case that some of the operations in the move operation could't be moved by a number of reason, one of them is, for example,
+      if one of the payments was not registered yet. The move will process all the operations, except this payment. This is an example of this case
+      ```json
+        {
+          "eventType" : "MOVE_PARTIAL_ACCEPTED",
+          "eventTime" : "2022-02-09T14:52:59.334291835Z",
+          "bucketName" : "XXXXX",
+          "approved": {
+            paymentIds: [ "P1", "P2" ]
+          },
+          "rejected": {
+            "message": "Payment was not registered yet",
+            "paymentIds": [ "P3" ]
+          },
+        }
+      ```
+
+      6. **Move Rejected**: The entire move operation was rejected. This could happen if the entire operations are invalid or if the move operation can't be done for the customer.
+      below is an example of the move rejected event:
+      ```json
+        {
+          "eventType" : "MOVE_REJECTED",
+          "eventTime" : "2022-02-09T14:52:59.334291835Z",
+          "bucketName" : "XXXXX",
+          "rejected": {
+            "message": "Partner can't operate exchanges",
+            "paymentIds": [ "P1", "P2", "P3" ]
+          },
+        }
+      ```
+
+      ## Bucket Balance Process
+
+      The Bucket Balance Process must be executed by the partner before send bucket to checkout. This process will return the balance of the bucket,
+      grouping by merchant and currency. If one of the groups is in the red (in debt), then this merchant must be taken out from the bucket. If not, the WebPayments will invalidate
+      the bucket in the checkout process. below is the diagram showing the activities that must be done by the partner:
+      <br/><br/>
+      <img  src="/assets/images/BucketBalance-Process-Diagram.svg">
+      <br/>
+
+      Explaining the steps:
+
+      1. **Bucket Balance Request**: Client sent a Get Rest call to the [/v1/webpayments/query/buckets/{bucket_name}/balance]. The Query API will return a json informing the current balance for the
+      bucket_name informed. below is an example of the payload returned (omitted json fields are not important in this analyses):
+      ```
+        {
+          merchant_balance_map: {
+            "merchant-1" : {
+              "USD" : {
+                "total_credits_remaining" : 1203.00,
+                "total_debits_remaining" : 2100.00
+              },
+              "EUR" : {
+                "total_credits_remaining" : 100.00,
+                "total_debits_remaining" : 100.00
+              }
+            },
+            "merchant-2" : {
+              "USD" : {
+                "total_credits_remaining" : 2210.00,
+                "total_debits_remaining" : 100.00
+              }
+            }
+          }
+        }
+      ```
+      Note in this example, the merchant-1 has more debits than credits in his final USD currency balance. Then for this case, this merchant must be removed
+      from this bucket before sending it to checkout process.
+
+      2. **Analyses Bucket Balance Result**: as explained before, the result of the bucket balance request must be analysed to find if there is some merchant
+      in the red.
+
+      3. **Move Merchant Operations Out of the Bucket**: if the merchar is in the red in the bucket balance, it must be out of the bucket.
+
+      ## Checkout Process
+
+      The Checkout process is responsible for complete the bucket's settlement. Having the move operation confirmed, and the bucket balance analysed (with adjusts in
+      the bucket, if is the case), then the partner can start the checkout process calling the endpoint [/v1/webpayments/buckets/{bucket_name}/checkout] where bucket_name is the
+      name of the bucket desired to checkout. Below is the diagram describing the process:
+      <br/><br/>
+      <img  src="/assets/images/Checkout-Process-Diagram.svg">
+      <br/>
+
+      Explaining the steps:
+
+      1. **Checkout Request Submitted**: Client send a Post Rest call to the [/v1/webpayments/buckets/{bucket_name}/checkout] endpoint for the desired bucket_name. No body is need.
+
+      2. **Invalid Checkout Request**: WebPayments returns synchronous informing check errors in the request. If the error is of 5XX class, some internal errors occur and the Ebury Bank Support team must be contacted.
+      Otherwise, check if the bucket_name is correct.
+
+      3. **Valid Checkout Request**: Checkout operation request was considered valid. But you need to wait for CHECKOUT_ACCEPTED event to confirm that bucket has gone to settlement.
+
+      4. **Checkout Approved**: This step occur asynchonously after step 3, and indicates that the checkout operation was accepted and the bucket has been settled. Note that in this case,
+      the event CHECKOUT_APPROVED is sent by callback reporting de success of the settlement and the list of operations approved. Example (omitted json fields are not important to this analyses):
+      ```json
+        {
+          "eventType" : "CHECKOUT_SUCCESS",
+          "eventTime" : "2022-02-09T14:52:59.334291835Z",
+          "bucketName" : "XXXXX",
+          "paymentIds": [ "P1", "P2" ],
+          "cancellationIds": [ "C1" ]
+        }
+      ```
+
+      5. **Checkout Rejected**: This step occur asynchonously after step 3, and indicates that the checkout operation was rejected for the operations informed. Note that in this case,
+      the event CHECKOUT_REJECTED is sent by callback reporting the fail of the settlement and the list of operations rejected. Example (omitted json fields are not important to this analyses):
+      ```json
+        {
+          "eventType" : "CHECKOUT_REJECTED",
+          "eventTime" : "2022-02-09T14:52:59.334291835Z",
+          "bucketName" : "XXXXX",
+          "paymentIds": [ "P1", "P2" ]
+        }
+      ```
+  - name: Cancellations
+    description: |
+      As it occurs with traditional payments, we also support refunds and cancellations. When a cancellation is requested, the source
+      payment must be referenced,  so we can verify it's current state and decide whether it will become a REVERSION,  REFUND, or UNREGISTER operation.
+
+      Therefore a cancellation must always be associated with a payment, and it can cancel the transaction partially or fully.
+      Multiple partial cancellations may be requested for a single payment.
+
+      Cancellation request's currency amount will be verified against the informed payment's remaining non-cancelled balance.
+      As for the informed payment's status, the following rules are verified:
+
+      - When the payment has not yet been registered, the cancellation is converted to a REVERSION operation, and on that case the
+      payment record is either removed (full cancellation) or it's values are accordingly shrunk (partial cancellation).
+
+      - When the payment is already registered, but no yet settled, the cancellation is converted to a UNREGISTER operation,
+       and the registered exchange contract is either fully cancelled (full cancellation) or it's values are accordingly shrunk (partial cancellation).
+
+      - When the payment is already settled (exchange operation completed), the cancellation request is converted to REFUND operation which is
+      a brand new exchange that must also be properly registered and settled.
+
+      ## Cancellation Process
+
+      The Cancellation process is the first step to delivery a Cancellation operations. Cancellation must be related to a payment or expense previously sent. The following diagram explains
+      the cancellation process, that starts when the client send and cancellation payout to the WebPayments endpoint: [v1/webpayments/payments/cancel/<payment_id>], where the payment_id is the payment
+      wanted to fully or partially cancel.
+      <br/><br/>
+      <img  src="/assets/images/Cancellation-Process-Diagram.svg">
+      <br/>
+
+      Explaining the steps:
+
+      1. **Cancellation Request Submitted**: Client send a Post Rest call to the [v1/webpayments/payments/cancel/<payment_id>] endpoint send json payload about the desired cancellation related to the payment_id.
+      In this case, the only obligated amount value is the nationalGrossAmount. If it is zero (0), then the WebPayments will understand that this is a full cancelattion intention. Otherwise,
+      will be a partial cancellation based on the value informed in the nationalGrossAmount field.
+
+      2. **Ivalid Cancellation**: WebPayments returns synchronous informing check errors in the request. If the error is of 5XX class, some internal errors occur and the Ebury Bank Support team must be contacted.
+      Otherwise, check the payload structure and values to verify if the payload is correct (include the payment_id informed in the url path).
+
+      3. **Valid Cancellation**: Cancellation sent was validated and a cancellation id is returned informing the fingerprint that must be hold by the client to consult or process this cancellation
+      in the next phases.
+
+      4. **Cancellartion Approved**: This step occur asynchonously after step 3, and indicates that the cancellation was approved by Ebury Bank Compliance.
+      The client will receive an event of type "CANCELLATION_ACCEPTED" with the following payload (omitted json fields are not important in this analyses):
+      ```json
+        {
+          "eventType" : "CANCELLATION_ACCEPTED",
+          "eventTime" : "2022-02-09T14:52:59.334291835Z",
+          "cancellationId" : "XXXXX",
+          "foreignGrossAmount": 0.00,
+          "nationalGrossAmount": 0.00,
+          "foreignNetAmount": 0.00,
+          "nationalNetAmount": 0.00,
+        }
+      ```
+      Note that when you a cancellation payment, the obligatory amount field is the National Gross Amount and the other could be ignored. In this case, pay attention on this event, because this returns the
+      other amounts calculated by the Ebury Bank Exchange Process, and is the values that are gonna be used to settle this payment.
+
+      5. **Cancellation Rejected**: Some validation error in the Compliance. Please, verify the event error result and consult Ebury Bank if needed. This event will come up with the eventType "CANCELLATION_REJECTED"
+      as the example below (omitted json fields are not important in this analyses):
+      ```json
+        {
+          "eventType" : "CANCELLATION_REJECTED",
+          "eventTime" : "2022-02-09T14:52:59.334291835Z",
+          "cancellationId" : "XXXXX",
+        }
+      ```
+
+      6. **Wait until Payment is moved**: the client must wait to move this cancellation to the bucket only after the payment related has already been moved to the bucket or it's already been checked out before.
+
+      7. **Cancellation Available to Move**: the cancellation can be moved to the bucket.
+
+      **Cancellation Event Move Example**
+      ```json
+        {
+          "eventType" : "MOVE_ACCEPTED",
+          "bucketName" : "XXXXX",
+          "approved": {
+            "cancellationIds": [ "C1" ]
+          }
+        }
+      ```
+      Note that as the move operations can be done oly with payments or cancellations (not both), the approvals events will return only with payments or cancellations (not both).
+  - name: Foreign Accounts
+    description: |
+      The merchant’s foreign account information is mandatory and must be registered during the merchant onboarding. After registering the merchant itself, use the ID returned to link the foreign account details.
+
+      Attention: the details informed in this registration will be used in the payment abroad and any incorrect information may inccur in delays or even return of the remittance.
+  - name: Hedges
+    description: |
+      Reserve an amount to be used later the same day. When a hedge is requested, it first simulates the operation and generates a quote and a hedge id, to be confirmed by the partner. Once this quote is accepted, the hedge is created and cannot be cancelled via API. If a hedge cancellation is necessary, it should be requested directly to Ebury Bank team and may incur in costs.
+      The quotation provided by hedge includes costs such as:
+      - The interest rate, according to the amount and period (settlement_date);
+      - The SPREAD rate agreed.
+
+      **Important:**
+
+      It's not allowed to request a hedge on non-working days and during non-business hours in Brazil.
+  - name: Merchants
+    description: |
+      As soon as the merchant has been onboarded by our Compliance team, inform the basic information described below in order to get the merchant_id that it will be used in all the payment flow.
+
+      **Please note:**
+      - It is necessary to send the merchant documentation to our Compliance team;
+      - If the onboarding is not concluded, the status of the request will be ANALYSING and the transactions sent with the merchant_ID will be rejected;
+      - After registering the merchant and getting the merchant_ID it is mandatory to link an address and a foreign account to it, as described in next sections;
+      - It is also possible to link the merchant to an intermediate receiver (PSP) and, if so, the merchant will be reported to Brazilian Central Bank but the remittance will be made using the PSP information (name, address and foreign account).
+  - name: Payments
+    description: |
+      This API's goal is to allow enablers and or intermediaries to register payments and subsequently submit those to their partners and/or customers.
+      To accomplish that, these payments are accumulated in our systems, to eventually become exchange operations.
+
+      A payment must be of type "PAYIN" or "PAYOUT", this means that the financial amount will be submitted (IN) or received (OUT) from abroad.
+      We also need to know the operation's category (GOODS, SERVICES or EXPENSES) to properly classify the exchange transaction.
+
+      ## Receiving Events
+
+      To get information about the phased processes executed after the request arrival, the customer must provide a listener to work as a Webhook listener, and receive events from the Webpayments API regarding the process of the payment's transactions itself.
+      The following pre requirements must be provided for the customer in order to receive webhook events:
+      - The customer's listener must operate in one of the following Authentication Mode: Oauth / Api Key.
+        - **Api Key** - This is the simplest (and less secured) Authentication Mode, the customer must provide a valid static unexpirable API KEY that are gonna be used as the Bearer Tokeb by the Webpayments return the events to the customer's listener
+        - **Oauth** - This is the recommended Authetication Mothe. The customer must provide an Oauth Authetication Server in order to the WebPaymentns (as an Application Client)
+      stablish the confidence securite circuit. In this way, the following information must be provided to registry the Oauth Server:
+          - Authetication URL - the URL that must be used for the Webpayments to proceed with the Oauth autheticantion process
+          - Audience - the Oauth audience that must be used to proceed with the authentication
+          - Client ID - It's the identification of the client (i.e the Webpayments) used the autheticate process.
+          - Client Secret - It's the pass/secret of the client (i.e the Webpauments) used to the autentication process.
+          - Callback URL - It's the URL that Webpayments will hit to send the events.
+
+
+      ## Processing
+
+      When an operation (payment or cancellation) is received, the system validates the input data, registers the record and returns the preliminary result on the request response.
+      After the initial response, multiple phased background processes work on the operation. To query information about the result of those processes, the customer should provide
+      a listener endpoint to serve as a WebHook listener. Webpayments can connect to that listener in 2 ways: APY_KEY and Oauth Authentication. See "Receiving Events" session for more details.
+
+      We are going to talk, in the next sessions, about WebPayments processes. For all of the diagrams presented, the following diagram describe the summary os the elements:
+
+      <img  src="/assets/images/Diagrams-Summary-Payment-Events-Machine.svg">
+
+      ## Payment Process
+
+      The Payment process is the first step to delivery Payment/Expense operations. Payment operations could be for Good or Service types. The process starts when the customer sends a request
+      to payments [v1/webpayments/payments]. The following state diagram describes the sequence of states that the payment operation should be handle by the client until the end of the process:
+      <br/><br/>
+      <img  src="/assets/images/Payment-Process-Diagram.svg">
+
+      **Explaining the steps:**
+      1. **Payment Request Submitted**: Client send a Post Rest call to the [v1/webpayments/payments] endpoint with json payload about the desired payment.
+
+      2. **Ivalid Payment Request**: WebPayments returns synchronous informing check errors in the request. If the error is of 5XX class,
+      some internal errors occur and the Ebury Bank Support team must be contacted. Otherwise, check the payload structure and values to verify if
+      the payload is correct.
+
+      3. **Valid Payment**: Payment sent was validated and a payment id is returned informing the fingerprint that must be hold by the partner to
+      consult or process this payments in the next phases.
+
+      4. **Payment Approved**: This step occur asynchonously after step 3, and indicates that the payment was approved by the Ebury Bank Compliance.
+      The partner's notification Listener will receive an event with the following payload (omitted json fields are not important in this case):
+      ```json
+        {
+          "eventType" : "PAYMENT_APPROVED",
+          "eventTime" : "2022-02-09T14:52:59.334291835Z",
+          "paymentId" : "XXXXX",
+          "status": "AVAILABLE_FOR_REGISTRY",
+          "foreignGrossAmount": 0.00,
+          "nationalGrossAmount": 0.00,
+          "foreignNetAmount": 0.00,
+          "nationalNetAmount": 0.00,
+          "exchangeRate": 0.00
+        }
+      ```
+      Note that when sending a payment, the only obligatory amount field is the National Gross Amount and the others could be ignored. In this case,
+      pay attention on this event, because it's returns the other amounts calculated by the Ebury Bank Exchange Process, and these are the values
+      gonna be used to settle this payment.
+
+      5. **Payment Rejected**: Some validation error in the Compliance. Please, verify the event error result and consult Ebury Bank if needed.
+      The events could be: PAYMENT_REJECTED, PAYMENT_INVALIDATED or PAYMENT_DUPLICATED. This is an payment's json rejected example (omitted fields are not important in this case):
+      ```json
+        {
+           "eventType" : "PAYMENT_DUPLICATED",
+           "paymentId" : "XXXXX",
+           "errors": {
+              "message": "Payment was rejected",
+              "details": {
+                  "E005" : "Payment with the same PaymentId has already been sent."
+              }
+           }
+        }
+      ```
+
+      6. **Payment Registered Failed**: Errors in the register phase of the payment process. This phase run asynchronous and
+      is responsible to create the exchange contracts and registry the payment against the governmental agencies.
+      Please, verify the event error result and consult Ebury Bank if needed. This is an payment's json rejected example
+      (omitted json fields are not important for this analyses):
+      ```json
+      {
+        "eventType": "REGISTER_REJECTED",
+        "eventTime": "2022-02-09T14:52:59.334291835Z",
+        "contractNumber": "1234",
+        "stage": "REGISTRY",
+        "bucketName": "TESTE-01",
+        "paymentIds": [
+            "XXXXX",
+            "YYYYY"
+        ],
+        "cancellationIds": [
+            "ZZZZZ",
+            "WWWWW"
+        ],
+        "legacyIds": [
+            {
+                "1": "ZZZZZ"
+            },
+            {
+                "2": "WWWWW"
+            }
+        ],
+        "error": {
+            "message": "Payment rejected in Registry phase."
+        }
+      }
+      ```
+      Note that in the Registry events, you can receive the confirmation with more then one operation. This is because a
+      single payment could aggregate other payments operations related like: take rates, expenses and cancellations.
+      It's important to pay attention on it because a registry event could inform status changes for more then one operation
+      (payments, expense, cancellations, etc) sent. Notice that the details field from the body is an array, that contains error details
+      about each payment id rejected in this event.<br/>
+      **OBS:** The values of the payload are not real. They are illustrations to get easy to explain the event body.
+
+      7. **Payment Registered Success**: Inform that operations in this event related to a payment was registered successfully and can be moved to a bucket in the next process. This is one example of this event:
+      ```json
+      {
+        "eventType": "REGISTER_SUCCESS",
+        "eventTime": "2024-03-05T10:35:30.122184081-03:00",
+        "contractNumber": "12345",
+        "stage": "REGISTRY",
+        "bucketName": "teste-01",
+        "paymentIds": [
+            "XXXX",
+            "AAAA"
+        ],
+        "cancellationIds": [
+            "ZZZZZ",
+            "WWWWW"
+        ],
+        "legacyIds": [
+            {
+                "1": "ZZZZZ"
+            },
+            {
+                "2": "WWWWW"
+            }
+        ]
+      }
+      ```
+      Note that in the Registry events, you can receive the confirmation with more then one operation. This is because a single payment could aggregate other payment operations related like:
+      take rates, expenses and cancellations. It's important to pay attention on it because a registry event could inform status changes for more then one operation (payments, expense, cancellations, etc) sent.
+
+      8. **Expense Approved Success**: the expense has no registry process relates. Then, in this case, you must analise if the event received is an PAYMENT_APPROVED, the product category
+      is EXPENSE and the status AVAILABLE_FOR_SETTLEMENT. This indicates the expense is ready to move. Example of json event:
+      ```json
+        {
+          "eventType" : "PAYMENT_APPROVED",
+          "eventTime" : "2022-02-09T14:52:59.334291835Z",
+          "paymentId" : "XXXXX",
+          "productCategory": "EXPENSE",
+          "status": "AVAILABLE_FOR_SETTLEMENT",
+          "foreignGrossAmount": 0.00,
+          "nationalGrossAmount": 0.00,
+          "foreignNetAmount": 0.00,
+          "nationalNetAmount": 0.00,
+          "exchangeRate": 0.00
+        }
+      ```
+  - name: Quotes
+    description: |
+      🆕 The exchange price provided by quotes includes the SPREAD rate agreed and the interest rate according to the exchange contract period. It can provide exchange 
+      price for different currencies using its code, according to the partner’s configuration.
+
+      - Category GOODS must be used with payment type PAYIN.
+      - Category SERVICES must be used with payment type PAYIN.
+      - Categories EXPENSES and REFUND must be used payment type PAYOUT.
+
+  - name: Withdraw
+  - name: Statement
+  - name: Notification
+
+  #  - name: Payments documents
+  #    description: |
+  #      Manage payments documents
+x-tagGroups:
+  - name: Security
+    tags:
+      - Authentication
+  - name: Information
+    tags:
+      - Introduction
+      - Contact
+      - How to use
+      - Obtaining your credentials
+  - name: Register
+    tags:
+      - Merchants
+      - Address
+      - Foreign Accounts
+      - Bank Account
+      - Customer
+  - name: Operation
+    tags:
+      - Quotes
+      - Hedges
+      - Payments
+      - Buckets
+      - Cancellations
+  - name: Banking
+    tags:
+      - Withdraw
+      - Statement
+      - Deposit
+      - Notification
+
+paths:
+  ### AUTHORIZATION
+  /v1/oauth/token:
+    $ref: './digitalfx/auth/auth.yaml#/auth'
+    servers:
+      - url: https://api-sandbox-auth.bexs.com.br
+
+  /v1/webpayments/hedges:
+    $ref: './webpayments/hedges/hedges.yaml#/createHedge'
+  /v1/webpayments/hedges/{hedge_id}:
+    $ref: './webpayments/hedges/hedges.yaml#/getHedgeByID'
+  /v1/webpayments/hedges/{hedge_id}/confirm:
+    $ref: './webpayments/hedges/hedges.yaml#/confirmHedge'
+
+  /v1/webpayments/foreign-accounts/{merchant_id}:
+    $ref: './webpayments/proxyMerchants/merchants.yaml#/create_foreign_accounts'
+  /v1/webpayments/foreign-accounts/{foreign_account_id}:
+    $ref: './webpayments/proxyMerchants/merchants.yaml#/foreign_accounts'
+  /v1/webpayments/merchants:
+    $ref: './webpayments/proxyMerchants/merchants.yaml#/merchants'
+  /v1/webpayments/merchants/{merchant_id}:
+    $ref: './webpayments/proxyMerchants/merchants.yaml#/merchants_withId'
+  /v1/webpayments/address/{merchant_id}:
+    $ref: './webpayments/proxyMerchants/merchants.yaml#/send_address'
+  /v1/webpayments/address/{address_id}:
+    $ref: './webpayments/proxyMerchants/merchants.yaml#/address'
+  /v1/webpayments/payments:
+    $ref: './webpayments/payments/payments.yaml#/capture'
+  /v1/webpayments/query/payment/{payment_id}:
+    $ref: './webpayments/payments/payments.yaml#/get'
+  /v1/webpayments/payments/cancel/{payment_id}:
+    $ref: './webpayments/payments/payments.yaml#/cancel'
+  /v1/webpayments/query/payment/{payment_id}/cancellations/{cancellation_id}:
+    $ref: './webpayments/payments/payments.yaml#/getCancel'
+  # /v1/webpayments/query/consumer/{document_number}/limit:
+  #   $ref: './webpayments/payments/payments.yaml#/getLimit'
+  /v1/webpayments/buckets/{bucket_name}/move:
+    $ref: './webpayments/payments/buckets.yaml#/move'
+  /v1/webpayments/query/buckets/{bucket_name}:
+    $ref: './webpayments/payments/buckets.yaml#/get'
+  /v1/webpayments/query/buckets/{bucket_name}/balance:
+    $ref: './webpayments/payments/buckets.yaml#/bucket-balance'
+  /v1/webpayments/query/buckets/{bucket_name}/sum:
+    $ref: './webpayments/payments/buckets.yaml#/bucket-sum'
+  /v1/webpayments/buckets/{bucket_name}/checkout:
+    $ref: './webpayments/payments/buckets.yaml#/checkout'
+  #  /v1/documents/{payment_id}:
+  #    $ref: './documents/documents.yaml#/list'
+  #  /v1/documents/{payment_id}/upload:
+  #    $ref: './documents/documents.yaml#/upload'
+  #  /v1/delete/{document_id}:
+  #    $ref: './documents/documents.yaml#/delete'
+  #  /v1/documents/download/{document_id}:
+  #    $ref: './documents/documents.yaml#/download'
+  /v1/webpayments/quotes:
+    $ref: './webpayments/quotes/quotes.yaml#/quotes'
+
+  /v1/customers/{customer_id}/bank-accounts:
+    $ref: './digitalfx/customer/bank_account/bank_account.yaml#/list_and_create_customer_bank_accounts'
+  /v1/customers/{customer_id}/bank-accounts/{bank_account_id}:
+    $ref: './digitalfx/customer/bank_account/bank_account.yaml#/get_and_update_bank_accounts'
+
+  ### BANKING
+  /v1/banking/accounts/{partner-id}/withdraws:
+    $ref: './account/banking.yml#/paths/~1v1~1banking~1accounts~1{partner-id}~1withdraws'
+  /v1/banking/accounts/{partner-id}/withdraws/{withdraw-id}:
+    $ref: './account/banking.yml#/paths/~1v1~1banking~1accounts~1{partner-id}~1withdraws~1{withdraw-id}'
+  /v1/banking/accounts/{partner-id}/statements:
+    $ref: './account/banking.yml#/paths/~1v1~1banking~1accounts~1{partner-id}~1statements'
+  /v1/banking/accounts/{partner-id}/qrcodes:
+    $ref: './account/pix-qrcode.yml#/paths/~1v1~1banking~1accounts~1{partner-id}~1qrcodes'
+  /v1/banking/accounts/{partner-id}/qrcodes?externalid={external-id}:
+    $ref: './account/pix-qrcode.yml#/paths/~1v1~1banking~1accounts~1{partner-id}~1qrcodes?externalid={external-id}'
+  /v1/banking/accounts/{partner-id}/sandbox/deposits:
+    $ref: './account/banking.yml#/paths/~1v1~1banking~1accounts~1{partner-id}~1sandbox~1deposits'
+
+  ### CUSTOMERS
+  /v1/customers:
+    $ref: './webpayments/customer/customer.yaml#/create_customer'
+  /v1/customers/{customer_id}/status:
+    $ref: './webpayments/customer/customer.yaml#/get_status_customer'
+
+x-webhooks:
+  $ref: './webpayments/webhooks.yml#/x-webhooks'

@@ -1,0 +1,271 @@
+list_and_create_customer_bank_accounts:
+  post:
+    tags:
+      - Bank Account
+    summary: Register a Bank Account
+    description: Create bank account information belonging to a **Customer**.
+    operationId: create-customer-bank-account
+    parameters:
+      - name: customer-id
+        in: path
+        description: Customer ID
+        required: true
+        schema:
+          type: string
+    requestBody:
+      description: Create a Bank Account
+      content:
+        "application/json":
+          schema:
+            $ref: "#/components/schemas/BankAccountRequest"
+      required: true
+    responses:
+      201:
+        description: Created
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankAccountResponse"
+      400:
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: "../../error/ErrorResponse.yaml#/ErrorResponse"
+      409:
+        description: Conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../../error/ErrorResponse.yaml#/ErrorResponse"
+      412:
+        description: Precondition Failed
+        content:
+          application/json:
+            schema:
+              $ref: "../../error/ErrorResponse.yaml#/ErrorResponse"
+      500:
+        description: Internal Server Error
+        content:
+          application/json:
+            schema:
+              $ref: "../../error/ErrorResponse.yaml#/ErrorResponse"
+    x-codegen-request-body-name: data
+  get:
+    tags:
+      - Bank Account
+    summary: List all Bank Accounts of a Customer
+    description: Get all bank accounts (and its informations) of a **Customer**.
+    operationId: list-customer-bank-accounts
+    parameters:
+      - name: customer-id
+        in: path
+        description: Customer ID
+        required: true
+        schema:
+          type: string
+    responses:
+      200:
+        description: OK
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankAccountResponseList"
+      400:
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: "../../error/ErrorResponse.yaml#/ErrorResponse"
+      404:
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: "../../error/ErrorResponse.yaml#/ErrorResponse"
+      412:
+        description: Precondition Failed
+        content:
+          application/json:
+            schema:
+              $ref: "../../error/ErrorResponse.yaml#/ErrorResponse"
+      500:
+        description: Internal Server Error
+        content:
+          application/json:
+            schema:
+              $ref: "../../error/ErrorResponse.yaml#/ErrorResponse"
+get_and_update_bank_accounts:
+  get:
+    tags:
+      - Bank Account
+    summary: Get a Bank Account
+    description: Get a specific bank account information of a **Customer**.
+    operationId: get-customer-bank-account
+    parameters:
+      - name: customer-id
+        in: path
+        description: Customer ID
+        required: true
+        schema:
+          type: string
+      - name: bank-account-id
+        in: path
+        description: Bank Account ID
+        required: true
+        schema:
+          type: string
+    responses:
+      200:
+        description: OK
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankAccountResponse"
+      400:
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: "../../error/ErrorResponse.yaml#/ErrorResponse"
+      404:
+        description: Not Found
+        content:
+          application/json:
+            schema:
+              $ref: "../../error/ErrorResponse.yaml#/ErrorResponse"
+      412:
+        description: Precondition Failed
+        content:
+          application/json:
+            schema:
+              $ref: "../../error/ErrorResponse.yaml#/ErrorResponse"
+      500:
+        description: Internal Server Error
+        content:
+          application/json:
+            schema:
+              $ref: "../../error/ErrorResponse.yaml#/ErrorResponse"
+  put:
+    tags:
+      - Bank Account
+    summary: Update Customer Bank Account
+    description: Update bank account data of a **Customer**.
+    operationId: update-customer-bank-account
+    parameters:
+      - name: customer-id
+        in: path
+        description: Customer ID
+        required: true
+        schema:
+          type: string
+      - name: bank-account-id
+        in: path
+        description: Bank Account ID
+        required: true
+        schema:
+          type: string
+    requestBody:
+      description: Update Bank Account
+      content:
+        "application/json":
+          schema:
+            $ref: "#/components/schemas/BankAccountRequest"
+      required: true
+    responses:
+      200:
+        description: OK
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankAccountResponse"
+      400:
+        description: Bad Request
+        content:
+          application/json:
+            schema:
+              $ref: "../../error/ErrorResponse.yaml#/ErrorResponse"
+      409:
+        description: Conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../../error/ErrorResponse.yaml#/ErrorResponse"
+      412:
+        description: Precondition Failed
+        content:
+          application/json:
+            schema:
+              $ref: "../../error/ErrorResponse.yaml#/ErrorResponse"
+      500:
+        description: Internal Server Error
+        content:
+          application/json:
+            schema:
+              $ref: "../../error/ErrorResponse.yaml#/ErrorResponse"
+    x-codegen-request-body-name: data
+components:
+  schemas:       
+    BankAccountRequest:
+      type: object
+      properties:
+        account_digit:
+          type: string
+          description: Account digit number
+          example: "1"
+        account_number:
+          type: string
+          description: Bank account number
+          example: "1674"
+        agency_digit:
+          type: string
+          description: Agency digit
+          example: "8"
+        agency_number:
+          type: string
+          description: Agency number 
+          example: "2516"
+        bank_code:
+          type: string 
+          description: Bank identification code. The code must be a valid code of a BACEN registered bank.
+          minLength: 3
+          maxLength: 3
+          example: "144"
+      required:
+        - account_number
+        - agency_number
+        - bank_code
+    BankAccountResponse:
+      type: object
+      properties:
+        account_digit:
+          type: string
+          description: Account digit number
+          example: "1"
+        account_number:
+          type: string
+          description: Bank account number 
+          example: "1674"
+        agency_digit:
+          type: string
+          description: Agency digit
+          example: "8"
+        agency_number:
+          type: string
+          description: Agency number 
+          example: "2516"
+        bank_code:
+          type: string
+          description: Bank identifier code
+          example: "144"        
+        id:
+          type: string
+          description: Bank Account ID
+          example: "f84afbb8-48de-4dd4-ba87-2c9aaa802837"
+          pattern: UUID
+          minLength: 36
+          maxLength: 36
+    BankAccountResponseList:
+      type: array
+      items:
+        $ref: "#/components/schemas/BankAccountResponse"      
