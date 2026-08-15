@@ -36,10 +36,18 @@ public static class BexsServiceCollectionExtensions
         services.AddOptions<BexsOptions>().Validate(
             options =>
             {
-                options.Validate();
-                return true;
+                try
+                {
+                    options.Validate();
+                    return true;
+                }
+                catch (InvalidOperationException)
+                {
+                    return false;
+                }
             },
-            "A configuração do BexsOptions é inválida.");
+            "A configuração do BexsOptions é inválida.")
+            .ValidateOnStart();
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IBexsTokenProvider, BexsTokenProvider>();
