@@ -1,0 +1,7 @@
+schema_version: repository-contract/v1
+repository_id: cd571059-cc5b-4ed6-8838-c484a13c0421
+identity:
+  remotes:
+  - github.com/cambioreal/bexs-sdk
+capabilities:
+  manifest: null
